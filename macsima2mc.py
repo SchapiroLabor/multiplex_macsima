@@ -557,6 +557,7 @@ def main():
             out_ant['exposure_level'].extend(antigen_stack_info['no_channels']*[e])
 
             if extract_bleach:
+                print('extracting bleaching cycle:',bcycle)
                 bleach_stack_info=create_stack(bleach_info,antigen_cycle_no=bcycle,isbleach=True,offset=offset_value,exp_level=e)
                 background_channels=['']#the blank string corresponds to the reference marker, it is always the first in the sorted_markers list
                 for m in antigen_stack_info['filters'][1::]:
