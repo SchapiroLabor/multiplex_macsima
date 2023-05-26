@@ -48,7 +48,7 @@ parser.add_argument('-il',
 parser.add_argument('-he',
                     '--hi_exposure_only',
                     action='store_true',
-                    help='Activate this flag to extract only the image set with the highest exposure time.'
+                    help='Activate this flag to extract only the set of images with the highest exposure time.'
                     )
 
 parser.add_argument('-nb',
@@ -122,7 +122,9 @@ def antigen_cycle_info(antigen_cycle_no=antigen_cycle_number,cycles_path=cycles_
             cycle_info['filter'].append(ref_marker)
         else:
             cycle_info['marker'].append(m)
-            cycle_info['filter'].append(marker_info[-1].split('_')[2])
+            #cycle_info['filter'].append(marker_info[-1].split('_')[2])
+            cycle_info['filter'].append(marker_info[-1].split('bit')[0].split("_")[-2])
+
         #rack
         cycle_info['rack'].append(acq_info[2].split('-')[-1])
         #well
@@ -356,9 +358,10 @@ def setup_coords(x,y,pix_units):
     xy_tile_positions=[(i, j) for i,j in zip(x_norm,y_norm)]
     return xy_tile_positions
 
-def tile_position(img):
-    meta_dict = {TAGS[key] : img.tag[key] for key in img.tag_v2}
-    ome=BeautifulSoup(meta_dict['ImageDescription'][0],'xml')
+def tile_position(metadata_string):
+    #meta_dict = {TAGS[key] : img.tag[key] for key in img.tag_v2}
+    #ome=BeautifulSoup(meta_dict['ImageDescription'][0],'xml')
+    ome=BeautifulSoup(metadata_string,'xml')
     x=float(ome.StageLabel["X"])
     y=float(ome.StageLabel["Y"])
     stage_units=ome.StageLabel["XUnit"]
@@ -395,10 +398,15 @@ def create_stack(info,exp_level=1,
 
     cycle_folder='_'.join([antigen_cycle,cycle_prefix+'Cycle'])
     workdir=os.path.join(cycles_path,cycle_folder)    
-    img_ref=PIL.Image.open(info['img_full_path'][0])
-    width=img_ref.width
-    height=img_ref.height
-    dtype_ref=tifff.imread(info['img_full_path'][0]).dtype
+    #img_ref=PIL.Image.open(info['img_full_path'][0])
+    #width=img_ref.width
+    #height=img_ref.height
+    #dtype_ref=tifff.imread(info['img_full_path'][0]).dtype
+    with tifff.TiffFile(info['img_full_path'][0]) as tif:
+        img_ref=tif.pages[0].asarray()
+    width=img_ref.shape[1]
+    height=img_ref.shape[0]
+    dtype_ref=img_ref.dtype
     ref_marker= list(info.loc[ info['exposure_level']=='ref', 'marker'])[0]
     markers= info['marker'].unique()
     markers_subset=np.setdiff1d(markers,[ref_marker])
@@ -465,10 +473,14 @@ def create_stack(info,exp_level=1,
                     
                 
                     if len(img_ref)>0:
-                        img=tifff.imread(img_ref[0])
-                        img_PIL=PIL.Image.open(img_ref[0])
-                        stack[counter,:,:]=tifff.imread(img_ref[0])
-                        tile_data=tile_position(img_PIL)
+                        #img=tifff.imread(img_ref[0])
+                        #img_PIL=PIL.Image.open(img_ref[0])
+                        with tifff.TiffFile(img_ref[0]) as tif:
+                            img=tif.pages[0].asarray()
+                            metadata=tif.ome_metadata
+                        #stack[counter,:,:]=tifff.imread(img_ref[0])
+                        stack[counter,:,:]=img
+                        tile_data=tile_position(metadata)
                         X.append(tile_data['x'])
                         Y.append(tile_data['y'])
                         counter+=1
