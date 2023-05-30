@@ -2,13 +2,12 @@ import ome_types
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from PIL import Image
-import PIL
-from PIL.TiffTags import TAGS
+#from PIL import Image
+#import PIL
+#from PIL.TiffTags import TAGS
 import tifffile as tifff
 from bs4 import BeautifulSoup
 import os
-import re 
 from uuid import uuid4
 import copy
 from ome_types import from_tiff,to_xml
