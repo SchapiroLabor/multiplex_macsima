@@ -1,0 +1,6 @@
+pip_macs
+test_data
+test_results
+Dockerfile_umamba
+.github
+.dockerignore

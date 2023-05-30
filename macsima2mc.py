@@ -21,16 +21,22 @@ import argparse
 parser=argparse.ArgumentParser()
 
 
-parser.add_argument('input',
+parser.add_argument('-i',
+                    '--input',
+                    required=True,
                     help='Directory containing the antigen & bleaching cycles. Use frontslash to specify path.'
                     )
 
-parser.add_argument('output',
+parser.add_argument('-o',
+                    '--output',
+                    required=True,
                     help='Directory where the stacks will be saved. Use frontslash to specify path.\
                         If directory does not exist it will be created.'
                     )
 
-parser.add_argument('cycles',
+parser.add_argument('-c',
+                    '--cycles',
+                    required=True,
                     type=int,
                     nargs='*',
                     help='By default this input accepts two integer numbers which mark the \
