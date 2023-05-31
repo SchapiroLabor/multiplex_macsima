@@ -4,7 +4,7 @@ dnspython==2.3.0
 elementpath==4.1.2
 email-validator==2.0.0.post2
 idna==3.4
-imagecodecs==2023.3.16
+imagecodecs
 lxml==4.9.2
 numpy==1.24.3
 ome-types==0.3.4
