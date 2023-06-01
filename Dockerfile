@@ -1,10 +1,10 @@
 FROM python:3.10.11-slim-buster
 COPY requirements.txt requirements.txt
 #COPY imagecodecs-2020.5.30.tar.gz imagecodecs-2020.5.30.tar.gz
-#RUN apt update
-#RUN apt install -y build-essential 
-#RUN apt-get install -y manpages-dev
-#RUN echo gcc --version
+RUN apt update
+RUN apt install -y build-essential 
+RUN apt-get install -y manpages-dev
+RUN echo gcc --version
 RUN python3 -m pip install --upgrade pip 
 #RUN pip install --upgrade wheel
 RUN python3 -m pip install --upgrade setuptools
@@ -15,6 +15,7 @@ RUN apt update
 RUN apt install -y build-essential 
 RUN apt-get install -y manpages-dev
 RUN echo gcc --version
+RUN echo whereis gcc 
 #RUN python3 -m pip install --upgrade pip setuptools
 #RUN python3 -m pip install --no-cache-dir --upgrade imagecodecs
 #RUN pip install --no-cache-dir --upgrade -r requirements.txt
