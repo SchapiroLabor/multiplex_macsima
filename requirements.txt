@@ -1,4 +1,4 @@
-imagecodecs==2023.3.16
+imagecodecs==2023.1.23
 beautifulsoup4==4.12.2
 bs4==0.0.1
 dnspython==2.3.0
