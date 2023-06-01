@@ -10,7 +10,7 @@ RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install --upgrade setuptools
 #RUN apt install -y libgif7 libtiff5 libsnappy1v5 libwebp6 libjbig0 libblosc1 libzopfli1 libopenjp2-7 liblcms2-2 libaec0 libbrotli1 libjxr0
 #RUN python3 -m pip install Cython
-#RUN python3 -m pip install imagecodecs==2023.3.16
+RUN python3 -m pip install -U imagecodecs[all]
 RUN apt update
 RUN apt install -y build-essential 
 RUN apt-get install -y manpages-dev
@@ -21,7 +21,7 @@ RUN whereis gcc
 #RUN pip install --no-cache-dir --upgrade -r requirements.txt
 #RUN apt-get update && \
 #    apt-get install -y gcc
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
+#RUN pip install --no-cache-dir --upgrade -r requirements.txt
 #ENV PATH="${PATH}:/opt/conda/bin"
 WORKDIR /stack_macsima
 COPY . .
