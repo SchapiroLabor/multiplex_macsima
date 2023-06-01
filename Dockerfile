@@ -1,4 +1,4 @@
-FROM python:3.10.11-slim-bullseye
+FROM python:3.9.16-slim-buster
 COPY requirements.txt requirements.txt
 RUN apt update
 RUN apt install -y build-essential 
