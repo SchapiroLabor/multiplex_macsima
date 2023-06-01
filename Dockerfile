@@ -15,7 +15,7 @@ RUN apt update
 RUN apt install -y build-essential 
 RUN apt-get install -y manpages-dev
 RUN echo gcc --version
-RUN echo whereis gcc 
+RUN whereis gcc 
 #RUN python3 -m pip install --upgrade pip setuptools
 #RUN python3 -m pip install --no-cache-dir --upgrade imagecodecs
 #RUN pip install --no-cache-dir --upgrade -r requirements.txt
