@@ -1,0 +1,7 @@
+.git
+pip_macs
+test_data
+.gitignore
+LICENSE
+requirements.txt
+Dockerfile
