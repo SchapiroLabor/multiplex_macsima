@@ -1,8 +1,8 @@
 # About this repository
-This repository contains the script macsima2mc.py, this script stacks the individual image files (.tif) produced by the MACSima system and saves the stack into an ome.tiff file.
+This repository contains the script macsima2mc.py, this script stacks the individual image files (.tif) produced by the MACSima system and saves the stack into an ome.tiff file ready to be used in the MCMICRO pipeline.
 
-The input of the script is the path to the directory that contains the images of the antigen and bleaching cycles, i.e the path to 001_AntigenCycle,001_BleachCycle,002_AntigenCycle...etc.  
-The output of the script is a stack for each cycle.  These stacks are saved into a hierarchical file structure based on the following acquisition parameters: rack_number->well_number->roi_number->exposure_level.  
+The input of the script is the path to the directory that contains the images of the antigen and bleaching cycles, i.e the path to folders usually named 001_AntigenCycle,001_BleachCycle,002_AntigenCycle...etc.  
+The output of the script is a stack for each cycle.  These stacks are saved into a hierarchical file structure based on the following acquisition parameters: rack_number->well_number->roi_number->exposure_level->stack.ome.tiff.  
 Along with the stacks a .csv file is produced for each exposure level used in the acquisition, the structure of this file is the required format by the markers.csv file used in MCMICRO.
 The stacks can be transfered to the raw folder of MCMICRO and the markers.csv used to run the analysis pipeline.
 
