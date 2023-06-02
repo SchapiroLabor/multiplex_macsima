@@ -1,5 +1,3 @@
 pip_macs
 test_data
-test_results
-Dockerfile2
 .dockerignore
