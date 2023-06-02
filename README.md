@@ -42,6 +42,14 @@ docker pull ghcr.io/schapirolabor/multiplex_macsima:main
 ```
 docker run -it -v /local/folder/with/cycles:/folder/inside/docker image_id bash 
 ```
+The path /folder/inside/docker can be any directory inside the container, /media is an option for it.
+
+3.- run script insde the container:
+
+```
+python macsima2mc.py -i /media -o /media/output -c 1 20
+```
+
 
 
 
