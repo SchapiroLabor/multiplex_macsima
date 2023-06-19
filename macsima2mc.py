@@ -45,6 +45,13 @@ parser.add_argument('-c',
                     this input will accept a list of any number of specific cycles.'
                     )
 
+
+parser.add_argument('-ofl',
+                    '--output_folders_list',
+                    action='store_true',
+                    help='Activate this flag to save the output images in a list of folders rather than in a tree structure.  The list structure facilitates pointing to the files to run a batch job.'
+                    )
+
 parser.add_argument('-il',
                     '--input_mode_list',
                     action='store_true',
@@ -426,22 +433,35 @@ def create_stack(info,exp_level=1,
     else:
         target_name='markers'
         target='_'.join(sorted_markers)
+
     
     for r in racks:
-        rack_path=stack_path / 'rack_{n}'.format(n=f'{r:02d}')
-        create_dir(rack_path)
+        output_levels=[]
+        rack_no='rack_{n}'.format(n=f'{r:02d}')
+        output_levels.append(rack_no)
+        #rack_path=stack_path / 'rack_{n}'.format(n=f'{r:02d}')
+        #create_dir(rack_path)
+
         for w in wells:
-            well_path=rack_path / 'well_{n}'.format(n=f'{w:02d}')
-            create_dir(well_path)
-            
+
+            well_no='well_{n}'.format(n=f'{w:02d}')
+            output_levels.append(well_no)
+            #well_path=rack_path / 'well_{n}'.format(n=f'{w:02d}')
+            #create_dir(well_path)
+        
             groupA=info.loc[(info['rack']==r) & (info['well']==w)]
             rois=groupA['roi'].unique()
             
             for roi in rois:
-                roi_path=well_path / 'roi_{n}'.format(n=f'{roi:02d}')
-                create_dir(roi_path)
-                exposure_path=roi_path / 'exp_level_{n}'.format(n=f'{exp_level:02d}')
-                create_dir(exposure_path)
+                roi_no='roi_{n}'.format(n=f'{roi:02d}')
+                exp_level_no='exp_level_{n}'.format(n=f'{exp_level:02d}')
+                #roi_path=well_path / 'roi_{n}'.format(n=f'{roi:02d}')
+                #create_dir(roi_path)
+                #exposure_path=roi_path / 'exp_level_{n}'.format(n=f'{exp_level:02d}')
+                #create_dir(exposure_path)
+                output_levels.append(roi_no)
+                output_levels.append(exp_level_no)
+
                 
                 counter=0
                 groupB=groupA.loc[groupA['roi']==roi]
@@ -497,8 +517,18 @@ def create_stack(info,exp_level=1,
                             stack[counter,:,:]=img
                             counter+=1
                 
+                if args.output_folders_list:
+                    output_folders_path=stack_path / '--'.join(output_levels) / 'raw'
+                else:
+                    output_folders_path=stack_path / Path('/'.join(output_levels)) / 'raw'
 
-                final_stack_path=os.path.join(exposure_path,stack_name)
+
+                if os.path.exists(output_folders_path):
+                    pass
+                else:
+                    os.makedirs(output_folders_path)
+
+                final_stack_path=os.path.join(output_folders_path,stack_name)
                 tifff.imwrite(final_stack_path, stack, photometric='minisblack')  
                 img_info={'name':stack_name,
                           'device':device_name,
