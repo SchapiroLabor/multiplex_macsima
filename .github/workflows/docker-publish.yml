@@ -5,9 +5,9 @@ name: publish docker container for macsima2mc.py
 # separate terms of service, privacy policy, and support
 # documentation.
 
-on: [push]
-  #release:
-    #types: published
+on:
+  release:
+    types:[ published ]
   #pull_request:
    # branches: [ "main" ]
 
