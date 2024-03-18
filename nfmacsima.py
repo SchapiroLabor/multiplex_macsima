@@ -11,9 +11,6 @@ import ome_types
 import ome_types.model
 import pandas as pd
 
-# from PIL import Image
-# import PIL
-# from PIL.TiffTags import TAGS
 import tifffile as tifff
 from bs4 import BeautifulSoup
 from ome_types import to_xml
@@ -72,15 +69,14 @@ cycle_no = args.cycle
 
 # ------ ENDINPUT BLOCK----#
 
-if not os.path.exists(stack_path):
-    os.mkdir(stack_path)
+os.makedirs(stack_path, exist_ok=True)
 
 
 # ---- HELPER FUNCTIONS ----#
 
 
 def antigen_cycle_info(antigen_folder=antigen_dir, ref_marker=ref_marker):
-    images = list(filter(lambda x: x.endswith(".tif"), os.listdir(antigen_folder)))
+    images = [x for x in os.listdir(antigen_folder) if x.endswith(".tif")]
 
     cycle_info = {
         "img_full_path": [],
@@ -157,7 +153,7 @@ def bleach_cycle_info(
 ):
     bleach_cycle = f"{antigen_cycle_no-1:03d}"
 
-    images = list(filter(lambda x: x.endswith(".tif"), os.listdir(bleach_folder)))
+    images = [x for x in os.listdir(bleach_folder) if x.endswith(".tif")]
 
     cycle_info = {
         "img_full_path": [],
