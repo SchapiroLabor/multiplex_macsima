@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import json
 import ome_types
 import numpy as np
 import pandas as pd
@@ -61,7 +62,7 @@ parser.add_argument('-il',
 parser.add_argument('-he',
                     '--hi_exposure_only',
                     action='store_true',
-                    help='Activate this flag to extract only the set of images with the highest exposure time.'
+                    help='Activate this flag to extract only the set o-of images with the highest exposure time.'
                     )
 
 parser.add_argument('-nb',
@@ -109,7 +110,13 @@ def antigen_cycle_info(antigen_cycle_no=antigen_cycle_number,cycles_path=cycles_
     antigen_cycle=f'{antigen_cycle_no:03d}'
     cycle_folder='_'.join([antigen_cycle,'AntigenCycle'])
     workdir=os.path.join(cycles_path,cycle_folder)
+    #filter out non tif files
     images=list(filter(lambda x: x.endswith('.tif'),os.listdir(workdir)))
+    #filter out files with tags None or Empty in the name
+    #images=list(filter(lambda x: "Empty" not in x,images))
+    #filter out files with tags None or Empty in the name
+    #images=list(filter(lambda x: "None" not in x,images))
+
     cycle_info={'img_full_path':[],
                 'image':images,
                 'marker':[],
@@ -120,6 +127,8 @@ def antigen_cycle_info(antigen_cycle_no=antigen_cycle_number,cycles_path=cycles_
                 'fov':[],
                 'exposure':[]
                }
+
+    
 
     for im in images:
         
@@ -133,6 +142,11 @@ def antigen_cycle_info(antigen_cycle_no=antigen_cycle_number,cycles_path=cycles_
         if ref_marker in m:
             cycle_info['marker'].append(ref_marker)
             cycle_info['filter'].append(ref_marker)
+        
+        elif "Empty" in m:
+            cycle_info['marker'].append(m.split('_')[0])
+            cycle_info['filter'].append(m.split("bit")[0].split("_")[-2])
+
         else:
             cycle_info['marker'].append(m)
             #cycle_info['filter'].append(marker_info[-1].split('_')[2])
@@ -183,6 +197,9 @@ def bleach_cycle_info(antigen_cycle_no=antigen_cycle_number,cycles_path=cycles_d
     cycle_folder='_'.join([bleach_cycle,'BleachCycle'])
     workdir=os.path.join(cycles_path,cycle_folder)
     images=list(filter(lambda x: x.endswith('.tif'),os.listdir(workdir)))
+    #filter out files with tags None or Empty in the name
+    #images=list(filter(lambda x: "Empty" not in x,images))
+    #images=list(filter(lambda x: "None" not in x,images))
     cycle_info={'img_full_path':[],
                 'image':images,
                 'marker':[],
@@ -297,12 +314,13 @@ def create_ome(img_info,xy_tile_positions_units,img_path):
                           )
     #--Generate channels block--#
     chann_block=[]
-    for ch in range(0,no_of_channels):
+    #for ch in range(0,no_of_channels):
+    for ch,chann_name in enumerate(markers):
         chann_block.append(Channel(id=ome_types.model.simple_types.ChannelID('Channel:{x}'.format(x=ch)),
-                                   color=ome_types.model.simple_types.Color((255,255,255)),
-                                   emission_wavelength=1,#place holder
-                                   excitation_wavelength=1,#place holder
-                               
+                                name=  chann_name,
+                                color=ome_types.model.simple_types.Color((255,255,255)),
+                                emission_wavelength=1,#place holder
+                                excitation_wavelength=1,#place holder
                                   )
                           )
     #--Generate pixels block--#
@@ -316,7 +334,8 @@ def create_ome(img_info,xy_tile_positions_units,img_path):
             template_plane_block[ch].position_x=xy_tile_positions_units[t][0]
             template_plane_block[ch].position_y=xy_tile_positions_units[t][1]
             template_plane_block[ch].exposure_time=exposures[ch]
-            template_chann_block[ch].id='Channel:{y}:{x}:{marker_name}'.format(x=ch,y=100+t,marker_name=mark)
+            template_chann_block[ch].id='Channel:{y}:{x}'.format(x=ch,y=100+t)
+            template_chann_block[ch].name=mark
             template_tiffdata_block[ch].ifd=ifd_counter
             ifd_counter+=1
         pix_block.append(Pixels(id=ome_types.model.simple_types.PixelsID('Pixels:{x}'.format(x=t)),
@@ -451,7 +470,8 @@ def create_stack(info,exp_level=1,
         
             groupA=info.loc[(info['rack']==r) & (info['well']==w)]
             rois=groupA['roi'].unique()
-            
+            print("remember to delete the line below line 467")
+            rois=[1]
             for roi in rois:
                 roi_no='roi_{n}'.format(n=f'{roi:02d}')
                 exp_level_no='exp_level_{n}'.format(n=f'{exp_level:02d}')
@@ -459,8 +479,11 @@ def create_stack(info,exp_level=1,
                 #create_dir(roi_path)
                 #exposure_path=roi_path / 'exp_level_{n}'.format(n=f'{exp_level:02d}')
                 #create_dir(exposure_path)
-                output_levels.append(roi_no)
-                output_levels.append(exp_level_no)
+                root_name=copy.deepcopy(output_levels)
+                root_name.append(roi_no)
+                root_name.append(exp_level_no)
+                #output_levels.append(roi_no)
+                #output_levels.append(exp_level_no)
 
                 
                 counter=0
@@ -484,12 +507,15 @@ def create_stack(info,exp_level=1,
 
                 X=[]
                 Y=[]
+
                 stack=np.zeros((stack_size_z,height,width),dtype=dtype_ref)
                 
                 exposure_per_marker=[]
                 exp=groupB.loc[(groupB['marker']==ref_marker) & (groupB['fov']==1) & (groupB['exposure_level']=='ref'),'exposure'].tolist()[0]
                 exposure_per_marker.append(exp)
                 for s in markers_subset:
+                    #print(s)
+                    #print("test",groupB.loc[(groupB['marker']==s) & (groupB['fov']==1) & (groupB['exposure_level']==exp_level),'exposure'].tolist())
                     exp=groupB.loc[(groupB['marker']==s) & (groupB['fov']==1) & (groupB['exposure_level']==exp_level),'exposure'].tolist()[0]
                     exposure_per_marker.append(exp)
                 
@@ -518,9 +544,9 @@ def create_stack(info,exp_level=1,
                             counter+=1
                 
                 if args.output_folders_list:
-                    output_folders_path=stack_path / '--'.join(output_levels) / 'raw'
+                    output_folders_path=stack_path / '--'.join(root_name) / 'raw'
                 else:
-                    output_folders_path=stack_path / Path('/'.join(output_levels)) / 'raw'
+                    output_folders_path=stack_path / Path('/'.join(root_name)) / 'raw'
 
 
                 if os.path.exists(output_folders_path):
@@ -579,6 +605,10 @@ def main():
         antigen_info=antigen_cycle_info(antigen_cycle_no=i)
         exp=antigen_info['exposure_level'].unique()
         exp=exp[exp!='ref']
+
+        if len(exp)==0:
+            exp=[1]
+
         exp.sort()
 
         if args.hi_exposure_only:
@@ -625,6 +655,11 @@ def main():
             else:
                 out_ant['background'].extend(antigen_stack_info['no_channels']*[''])
 
+    #with open(Path("D:/out_ant.json"), "w") as fp:
+    #   json.dump(out_ant , fp)
+
+    #with open(Path("D:/out_ble.json"), "w") as fp:
+    #    json.dump(out_ble , fp)
 
     for e in exp:
         if extract_bleach:
