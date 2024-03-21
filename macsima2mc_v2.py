@@ -101,73 +101,72 @@ if os.path.exists(stack_path):
     pass
 else:
     os.mkdir(stack_path)
+#----Extract names of all cycles
+def pull_all_cycles( cycles_path):
+    folders=list(filter(lambda x: 'Cycle' in x ,os.listdir( cycles_path )))
+    aux_list={ int(f.split('Cycle_')[-1]):f for f in folders } 
+    folders=dict( sorted(aux_list.items(),reverse=False) )  
+    #aux_list=sorted(aux_list,key=itemgetter(1),reverse=False)
+    return folders
 
+cycles_list=pull_all_cycles(cycles_dir)
 
 #---- HELPER FUNCTIONS ----#
 
-def antigen_cycle_info(antigen_cycle_no=antigen_cycle_number,cycles_path=cycles_dir,ref_marker='DAPI'):
-    antigen_cycle=f'{antigen_cycle_no:03d}'
-    cycle_folder='_'.join([antigen_cycle,'AntigenCycle'])
-    workdir=os.path.join(cycles_path,cycle_folder)
+
+
+def cycle_info(cycle_no,cycles_path=cycles_dir,cycles=cycles_list,ref_marker='DAPI'):
+
+    workdir=cycles_path / cycles[cycle_no]
     images=list(filter(lambda x: x.endswith('.tif'),os.listdir(workdir)))
-    cycle_info={'img_full_path':[],
-                'image':images,
+    antigen_images=list( filter(lambda x: '_S_' in x ,images) )
+
+
+    cycle_info={'cycle':[]
+                'antigen_full_path':[],
+                'bleach_full_path':[],
+                'antigen_image':[],
+                'bleach_image':[],
                 'marker':[],
                 'filter':[],
                 'rack':[],
                 'well':[],
                 'roi':[],
-                'fov':[],
-                'exposure':[]
                }
 
-    for im in images:
-        
-        marker_info=im.split('AntigenCycle')[-1].split('__')
-        acq_info=im.split('sensor')[-1].split('_')
-        #add the information to the cycle_info dictionary
-        #img full path
-        cycle_info['img_full_path'].append(os.path.join(workdir,im))
-        #marker and fluorophore ()
-        m=marker_info[0].strip('_')
-        if ref_marker in m:
-            cycle_info['marker'].append(ref_marker)
-            cycle_info['filter'].append(ref_marker)
-        else:
-            cycle_info['marker'].append(m)
-            #cycle_info['filter'].append(marker_info[-1].split('_')[2])
-            cycle_info['filter'].append(marker_info[-1].split('bit')[0].split("_")[-2])
 
-        #rack
-        cycle_info['rack'].append(acq_info[2].split('-')[-1])
-        #well
-        cycle_info['well'].append(acq_info[3].split('-')[-1])
-        #roi
-        cycle_info['roi'].append(acq_info[4].split('-')[-1])
-        #fov, i.e. tiles
-        cycle_info['fov'].append(acq_info[5].split('-')[-1])
-        #exposure
-        exposure=cycle_info['exposure'].append(acq_info[6].split('-')[-1].strip('.tif'))        
+    
+
+    for im in antigen_images:
+
+        file_tags=im.split('_')
+
+        cycle_info['cycle'].append(cycle_no)
+        cycle_info['antigen_full_path'].append( workdir / im )
+        cycle_info['bleach_full_path'].append( workdir / im.replace('_S_','_B_') )
+        cycle_info['antigen_image'].append( im )
+        cycle_info['bleach_image'].append( im.replace('_S_','_B_') )
+        marker_name=file_tags[-1]
+        if ref_marker in marker_name:
+
+            cycle_info['marker'].append( ref_marker )
+            cycle_info['filter'].append( ref_marker )
+        else:
+            cycle_info['marker'].append( file_tags[-1] )
+            cycle_info['filter'].append( file_tags[3] )
+
+        cycle_info['rack'].append( int(file_tags[4]) )
+        cycle_info['well'].append( int(file_tags[5]) )
+        cycle_info['roi'].append(  int(file_tags[6]) )
+     
         
     info=pd.DataFrame(cycle_info)
     
 
     markers= info['marker'].unique()
     markers_subset=np.setdiff1d(markers,[ref_marker])
-    info.insert(len(cycle_info),'exposure_level',np.zeros(info.shape[0]))
-    info.loc[ info['marker']==ref_marker, 'exposure_level']='ref'
-    #info.to_csv(os.path.join(cycles_path,'test_antigen.csv'))
 
-
-    for m in markers_subset:
-        exposure=info.loc[info['marker']==m]['exposure'].unique()
-        val=pd.to_numeric(exposure)
-        val=np.sort(val)
-        for level,value in enumerate(val):
-            info.loc[ (info['marker']==m) & (info['exposure']==str(value)), 'exposure_level']=level+1
     
-            
-
     info['rack']=pd.to_numeric(info['rack'],downcast='unsigned')
     info['well']=pd.to_numeric(info['well'],downcast='unsigned')
     info['roi']=pd.to_numeric(info['roi'],downcast='unsigned')
