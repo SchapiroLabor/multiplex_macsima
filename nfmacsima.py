@@ -17,10 +17,11 @@ from ome_types import to_xml
 from ome_types.model import OME, Image, Pixels, TiffData, Channel, Plane
 from ome_types.model.simple_types import PixelsID, ImageID, Color, ChannelID
 from ome_types.model.tiff_data import UUID
+import re
+import sys
 
 # ---CLI-BLOCK---#
 parser = argparse.ArgumentParser()
-
 
 parser.add_argument(
     "-i",
@@ -54,7 +55,6 @@ parser.add_argument(
     help="Activate this flag to extract only the set of images with the highest exposure time.",
 )
 
-
 args = parser.parse_args()
 # ---END_CLI-BLOCK---#
 
@@ -75,157 +75,85 @@ os.makedirs(stack_path, exist_ok=True)
 # ---- HELPER FUNCTIONS ----#
 
 
-def antigen_cycle_info(antigen_folder=antigen_dir, ref_marker=ref_marker):
-    images = [x for x in os.listdir(antigen_folder) if x.endswith(".tif")]
+def extract_values(pattern, strings, number_cast=True):
+    return [
+        (int(m.group(1)) if number_cast else m.group(1))
+        if (m := re.search(pattern, s))
+        else None
+        for s in strings
+    ]
 
-    cycle_info = {
-        "img_full_path": [],
-        "image": images,
-        "marker": [],
-        "filter": [],
-        "rack": [],
-        "well": [],
-        "roi": [],
-        "fov": [],
-        "exposure": [],
-    }
 
-    for im in images:
-        # Extraction of marker name info and acquisition info (rack,well,exposure,roi)
-        marker_info = im.split("AntigenCycle")[-1].split("__")
-        acq_info = im.split("sensor")[-1].split("_")
-        # add the information to the cycle_info dictionary
-        # img full path
-        cycle_info["img_full_path"].append(os.path.join(antigen_folder, im))
-        # marker and fluorophore ()
-        m = marker_info[0].strip("_")
-        if ref_marker in m:
-            cycle_info["marker"].append(ref_marker)
-            cycle_info["filter"].append(ref_marker)
-        else:
-            cycle_info["marker"].append(m)
-            cycle_info["filter"].append(marker_info[-1].split("bit")[0].split("_")[-2])
-
-        # rack
-        cycle_info["rack"].append(acq_info[2].split("-")[-1])
-        # well
-        cycle_info["well"].append(acq_info[3].split("-")[-1])
-        # roi
-        cycle_info["roi"].append(acq_info[4].split("-")[-1])
-        # fov, i.e. tiles
-        cycle_info["fov"].append(acq_info[5].split("-")[-1])
-        # exposure
-        exposure = cycle_info["exposure"].append(
-            acq_info[6].split("-")[-1].strip(".tif")
+def cycle_info(data_folder: Path, ref_marker: str, antigen_cycle_no: int = cycle_no):
+    if "AntigenCycle" in data_folder.name:
+        cycle = "AntigenCycle"
+    elif "BleachCycle" in data_folder.name:
+        cycle = "BleachCycle"
+    else:
+        raise ValueError(
+            "Folder name should contain either AntigenCycle or BleachCycle."
         )
 
-    info = pd.DataFrame(cycle_info)
+    full_image_path = list(data_folder.glob("*.tif"))
+    images = [x.name for x in full_image_path]
+
+    # Define the patterns
+    b_pattern = r"_B-(\d+)"  # What is this?
+    rack_pattern = r"_R-(\d+)"
+    well_pattern = r"_W-(\d+)"
+    roi_pattern = r"_G-(\d+)"
+    fov_pattern = r"_F-(\d+)"
+    exposure_pattern = r"_E-(\d+)"
+    filter_pattern = r".*_([^_]*)_\d+bit"
+
+    marker_pattern = rf"{cycle}_(.*?)_"
+    marker_values = extract_values(
+        pattern=marker_pattern, strings=images, number_cast=False
+    )
+    filter_values = extract_values(
+        pattern=filter_pattern, strings=images, number_cast=False
+    )
+
+    # Todo: Is this even needed?
+    filter_values = [
+        ref_marker if marker == ref_marker else value
+        for marker, value in zip(marker_values, filter_values)
+    ]
+
+    info = pd.DataFrame(
+        {
+            "img_full_path": full_image_path,
+            "image": images,
+            "marker": extract_values(
+                pattern=marker_pattern, strings=images, number_cast=False
+            ),
+            "filter": filter_values,
+            "rack": extract_values(pattern=rack_pattern, strings=images),
+            "well": extract_values(pattern=well_pattern, strings=images),
+            "roi": extract_values(pattern=roi_pattern, strings=images),
+            "fov": extract_values(pattern=fov_pattern, strings=images),
+            "exposure": extract_values(pattern=exposure_pattern, strings=images),
+        }
+    )
 
     markers = info["marker"].unique()
     markers_subset = np.setdiff1d(markers, [ref_marker])
+
     # insert the exposure level colum at the end of the info dataframe
-    info.insert(len(cycle_info), "exposure_level", np.zeros(info.shape[0]))
-    # label the exposure level of the reference markers with "ref"
+    info.insert(loc=info.shape[1], column="exposure_level", value=0)
+
+    info["exposure_level"] = (
+        info.groupby("marker")["exposure"].rank(method="dense").astype(int)
+    )
     info.loc[info["marker"] == ref_marker, "exposure_level"] = "ref"
 
-    for m in markers_subset:
-        exposure = info.loc[info["marker"] == m]["exposure"].unique()
-        val = pd.to_numeric(exposure)
-        val = np.sort(val)
-        for level, value in enumerate(val):
-            info.loc[
-                (info["marker"] == m) & (info["exposure"] == str(value)),
-                "exposure_level",
-            ] = level + 1
-
-    # change the data type to numeric
-    info["rack"] = pd.to_numeric(info["rack"], downcast="unsigned")
-    info["well"] = pd.to_numeric(info["well"], downcast="unsigned")
-    info["roi"] = pd.to_numeric(info["roi"], downcast="unsigned")
-    info["fov"] = pd.to_numeric(info["fov"], downcast="unsigned")
-    info["exposure"] = pd.to_numeric(info["exposure"], downcast="unsigned")
-
-    return info
-
-
-def bleach_cycle_info(
-    bleach_folder=bleach_dir, ref_marker=ref_marker, antigen_cycle_no=cycle_no
-):
-    bleach_cycle = f"{antigen_cycle_no-1:03d}"
-
-    images = [x for x in os.listdir(bleach_folder) if x.endswith(".tif")]
-
-    cycle_info = {
-        "img_full_path": [],
-        "image": images,
-        "marker": [],
-        "filter": [],
-        "rack": [],
-        "well": [],
-        "roi": [],
-        "fov": [],
-        "exposure": [],
-    }
-
-    for im in images:
-        marker_info = im.split("BleachCycle")[-1].split("_")
-        acq_info = im.split("sensor")[-1].split("_")
-        # add the information to the cycle_info dictionary
-        # img full path
-        cycle_info["img_full_path"].append(os.path.join(bleach_folder, im))
-        # marker and fluorophore
-        # marker_info=['', 'DAPI', 'V0', 'DAPI', '16bit', 'M-20x-S Fluor full sensor', 'B-1', 'R-1', 'W-2', 'G-1', 'F-10', 'E-16.0.tif']
-        m = marker_info[1]
-        if m == ref_marker:
-            cycle_info["marker"].append(ref_marker)
-        else:
-            cycle_info["marker"].append(
-                "_".join([bleach_cycle, "bleach", marker_info[3]])
-            )
-        cycle_info["filter"].append(marker_info[3])
-        # rack
-        cycle_info["rack"].append(acq_info[2].split("-")[-1])
-        # well
-        cycle_info["well"].append(acq_info[3].split("-")[-1])
-        # roi
-        cycle_info["roi"].append(acq_info[4].split("-")[-1])
-        # fov, i.e. tiles
-        cycle_info["fov"].append(acq_info[5].split("-")[-1])
-        # exposure
-        exposure = cycle_info["exposure"].append(
-            acq_info[6].split("-")[-1].strip(".tif")
+    if cycle == "BleachCycle":
+        bleach_cycle = f"{antigen_cycle_no - 1:03d}"
+        info.loc[info["marker"] == "None", "marker"] = (
+            f"{bleach_cycle}_bleach_" + info["filter"]
         )
 
-    info = pd.DataFrame(cycle_info)
-
-    markers = info["filter"].unique()
-    markers_subset = np.setdiff1d(markers, [ref_marker])
-    info.insert(len(cycle_info), "exposure_level", np.zeros(info.shape[0]))
-    info.loc[info["marker"] == ref_marker, "exposure_level"] = "ref"
-    # info.to_csv(os.path.join(cycles_path,'test_bleach.csv'))
-
-    for m in markers_subset:
-        exposure = info.loc[info["filter"] == m]["exposure"].unique()
-        val = pd.to_numeric(exposure)
-        val = np.sort(val)
-        for level, value in enumerate(val):
-            info.loc[
-                (info["filter"] == m) & (info["exposure"] == str(value)),
-                "exposure_level",
-            ] = level + 1
-
-    info["rack"] = pd.to_numeric(info["rack"], downcast="unsigned")
-    info["well"] = pd.to_numeric(info["well"], downcast="unsigned")
-    info["roi"] = pd.to_numeric(info["roi"], downcast="unsigned")
-    info["fov"] = pd.to_numeric(info["fov"], downcast="unsigned")
-    info["exposure"] = pd.to_numeric(info["exposure"], downcast="unsigned")
-
     return info
-
-
-def create_dir(dir_path):
-    if not os.path.exists(dir_path):
-        os.mkdir(dir_path)
 
 
 def create_ome(img_info, xy_tile_positions_units, img_path):
@@ -241,7 +169,7 @@ def create_ome(img_info, xy_tile_positions_units, img_path):
     sig_bits = img_info["sig_bits"]
     if pixel_units == "mm":
         pixel_size = 1000 * pixel_size
-        # pixel_units='um'
+        # pixel_units="um"
     no_of_tiles = len(xy_tile_positions_units)
     tifff.tiffcomment(img_path, "")
     # UUID=ome_types.model.tiff_data.UUID(file_name=img_name,value=uuid4().urn)
@@ -344,8 +272,6 @@ def setup_coords(x, y, pix_units):
 
 
 def tile_position(metadata_string):
-    # meta_dict = {TAGS[key] : img.tag[key] for key in img.tag_v2}
-    # ome=BeautifulSoup(meta_dict['ImageDescription'][0],'xml')
     ome = BeautifulSoup(metadata_string, "xml")
     x = float(ome.StageLabel["X"])
     y = float(ome.StageLabel["Y"])
@@ -353,7 +279,7 @@ def tile_position(metadata_string):
     pixel_size = float(ome.Pixels["PhysicalSizeX"])
     pixel_units = ome.Pixels["PhysicalSizeXUnit"]
     bit_depth = ome.Pixels["Type"]
-    significantBits = int(ome.Pixels["SignificantBits"])
+    significant_bits = int(ome.Pixels["SignificantBits"])
     return {
         "x": x,
         "y": y,
@@ -361,7 +287,7 @@ def tile_position(metadata_string):
         "pixel_size": pixel_size,
         "pixel_units": pixel_units,
         "bit_depth": bit_depth,
-        "sig_bits": significantBits,
+        "sig_bits": significant_bits,
     }
 
 
@@ -389,6 +315,7 @@ def create_stack(
     dtype_ref = img_ref.dtype
     ref_marker = list(info.loc[info["exposure_level"] == "ref", "marker"])[0]
     markers = info["marker"].unique()
+
     markers_subset = np.setdiff1d(markers, [ref_marker])
     sorted_markers = np.insert(markers_subset, 0, ref_marker)
     sorted_filters = [
@@ -421,7 +348,7 @@ def create_stack(
                 fov_id = np.sort(fov_id)
 
                 stack_name = "cycle-{C}-{prefix}-exp-{E}-rack-{R}-well-{W}-roi-{ROI}-{T}-{M}.{img_format}".format(
-                    C=f"{(offset+antigen_cycle_no):03d}",
+                    C=f"{(offset + antigen_cycle_no):03d}",
                     prefix=cycle_prefix,
                     E=exp_level,
                     R=r,
@@ -443,6 +370,7 @@ def create_stack(
                     "exposure",
                 ].tolist()[0]
                 exposure_per_marker = [exp]
+
                 for s in markers_subset:
                     exp = groupB.loc[
                         (groupB["marker"] == s)
@@ -507,8 +435,11 @@ def create_stack(
 
 
 def main():
-    antigen_info = antigen_cycle_info(antigen_folder=antigen_dir)
-    bleach_info = bleach_cycle_info(bleach_folder=bleach_dir)
+    antigen_info = cycle_info(data_folder=antigen_dir, ref_marker=ref_marker)
+    bleach_info = cycle_info(data_folder=bleach_dir, ref_marker=ref_marker)
+    print(antigen_info)
+    sys.exit()
+
     exp = antigen_info["exposure_level"].unique()
     exp = exp[exp != "ref"]
     exp.sort()
