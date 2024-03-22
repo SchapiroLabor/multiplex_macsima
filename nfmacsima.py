@@ -84,7 +84,9 @@ def extract_values(pattern, strings, number_cast=True):
     ]
 
 
-def cycle_info(data_folder: Path, ref_marker: str, antigen_cycle_no: int = cycle_no):
+def cycle_info(
+    data_folder: Path, reference_marker: str, antigen_cycle_no: int = cycle_no
+):
     if "AntigenCycle" in data_folder.name:
         cycle = "AntigenCycle"
     elif "BleachCycle" in data_folder.name:
@@ -116,7 +118,7 @@ def cycle_info(data_folder: Path, ref_marker: str, antigen_cycle_no: int = cycle
 
     # Todo: Is this even needed?
     filter_values = [
-        ref_marker if marker == ref_marker else value
+        reference_marker if marker == reference_marker else value
         for marker, value in zip(marker_values, filter_values)
     ]
 
@@ -136,16 +138,13 @@ def cycle_info(data_folder: Path, ref_marker: str, antigen_cycle_no: int = cycle
         }
     )
 
-    markers = info["marker"].unique()
-    markers_subset = np.setdiff1d(markers, [ref_marker])
-
     # insert the exposure level colum at the end of the info dataframe
     info.insert(loc=info.shape[1], column="exposure_level", value=0)
 
     info["exposure_level"] = (
         info.groupby("marker")["exposure"].rank(method="dense").astype(int)
     )
-    info.loc[info["marker"] == ref_marker, "exposure_level"] = "ref"
+    info.loc[info["marker"] == reference_marker, "exposure_level"] = "ref"
 
     if cycle == "BleachCycle":
         bleach_cycle = f"{antigen_cycle_no - 1:03d}"
@@ -261,6 +260,7 @@ def create_ome(img_info, xy_tile_positions_units, img_path):
 
 
 def setup_coords(x, y, pix_units):
+    # Todo: This only gets executed if pix_units is mm. Check if this is the case.
     if pix_units == "mm":
         x_norm = 1000 * (np.array(x) - np.min(x))  # /pixel_size
         y_norm = 1000 * (np.array(y) - np.min(y))  # /pixel_size
@@ -333,56 +333,47 @@ def create_stack(
         for w in wells:
             well_no = "well_{n}".format(n=f"{w:02d}")
             output_levels.append(well_no)
-            groupA = info.loc[(info["rack"] == r) & (info["well"] == w)]
-            rois = groupA["roi"].unique()
+            group_a = info.loc[(info["rack"] == r) & (info["well"] == w)]
+            rois = group_a["roi"].unique()
 
             for roi in rois:
                 roi_no = "roi_{n}".format(n=f"{roi:02d}")
                 exp_level_no = "exp_level_{n}".format(n=f"{exp_level:02d}")
                 output_levels.extend((roi_no, exp_level_no))
                 counter = 0
-                groupB = groupA.loc[groupA["roi"] == roi]
-                A = groupB.loc[(groupB["exposure_level"] == "ref")]
+                group_b = group_a.loc[group_a["roi"] == roi]
+                A = group_b.loc[(group_b["exposure_level"] == "ref")]
                 stack_size_z = A.shape[0] * len(markers)
-                fov_id = groupB.loc[groupB["marker"] == ref_marker, "fov"].unique()
+                fov_id = group_b.loc[group_b["marker"] == ref_marker, "fov"].unique()
                 fov_id = np.sort(fov_id)
 
-                stack_name = "cycle-{C}-{prefix}-exp-{E}-rack-{R}-well-{W}-roi-{ROI}-{T}-{M}.{img_format}".format(
-                    C=f"{(offset + antigen_cycle_no):03d}",
-                    prefix=cycle_prefix,
-                    E=exp_level,
-                    R=r,
-                    W=w,
-                    ROI=roi,
-                    T=target_name,  # markers or filters
-                    M=target,
-                    img_format="ome.tiff",
-                )
+                stack_name = f"""cycle-{(offset + antigen_cycle_no):03d}-{cycle_prefix}-exp-{exp_level}-
+                                 rack-{r}-well-{w}-roi-{roi}-{target_name}-{target}.ome.tiff"""
 
                 X = []
                 Y = []
                 stack = np.zeros((stack_size_z, height, width), dtype=dtype_ref)
 
-                exp = groupB.loc[
-                    (groupB["marker"] == ref_marker)
-                    & (groupB["fov"] == 1)
-                    & (groupB["exposure_level"] == "ref"),
+                exp = group_b.loc[
+                    (group_b["marker"] == ref_marker)
+                    & (group_b["fov"] == 1)
+                    & (group_b["exposure_level"] == "ref"),
                     "exposure",
                 ].tolist()[0]
                 exposure_per_marker = [exp]
 
                 for s in markers_subset:
-                    exp = groupB.loc[
-                        (groupB["marker"] == s)
-                        & (groupB["fov"] == 1)
-                        & (groupB["exposure_level"] == exp_level),
+                    exp = group_b.loc[
+                        (group_b["marker"] == s)
+                        & (group_b["fov"] == 1)
+                        & (group_b["exposure_level"] == exp_level),
                         "exposure",
                     ].tolist()[0]
                     exposure_per_marker.append(exp)
 
                 for tile in fov_id:
-                    if img_ref := groupB.loc[
-                        (groupB["marker"] == ref_marker) & (groupB["fov"] == tile),
+                    if img_ref := group_b.loc[
+                        (group_b["marker"] == ref_marker) & (group_b["fov"] == tile),
                         "img_full_path",
                     ].tolist():
                         with tifff.TiffFile(img_ref[0]) as tif:
@@ -396,10 +387,10 @@ def create_stack(
                         counter += 1
 
                         for m in markers_subset:
-                            img_marker = groupB.loc[
-                                (groupB["marker"] == m)
-                                & (groupB["fov"] == tile)
-                                & (groupB["exposure_level"] == exp_level),
+                            img_marker = group_b.loc[
+                                (group_b["marker"] == m)
+                                & (group_b["fov"] == tile)
+                                & (group_b["exposure_level"] == exp_level),
                                 "img_full_path",
                             ].tolist()[0]
                             img = tifff.imread(img_marker)
@@ -435,10 +426,8 @@ def create_stack(
 
 
 def main():
-    antigen_info = cycle_info(data_folder=antigen_dir, ref_marker=ref_marker)
-    bleach_info = cycle_info(data_folder=bleach_dir, ref_marker=ref_marker)
-    print(antigen_info)
-    sys.exit()
+    antigen_info = cycle_info(data_folder=antigen_dir, reference_marker=ref_marker)
+    bleach_info = cycle_info(data_folder=bleach_dir, reference_marker=ref_marker)
 
     exp = antigen_info["exposure_level"].unique()
     exp = exp[exp != "ref"]
