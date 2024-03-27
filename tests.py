@@ -1,7 +1,13 @@
 import os 
 from pathlib import Path
 from operator import itemgetter
+import argparse
+import logging
+from argparse import ArgumentParser as AP
+from os.path import splitext
+from pathlib import Path
 
+parser=argparse.ArgumentParser()
 cycles_dir=Path('C:/Users/vp232003/repos/test_data/macsima_v2')
  
 def pull_all_cycles( cycles_path=cycles_dir):
@@ -36,9 +42,23 @@ def cycle_info(cycle_no=1,cycles_path=cycles_dir ,cycles=cycles_list,ref_marker=
 
 #cycle_info()
 
-name='C-001_S-000_S_DAPI_R-01_W-A01_ROI-01_A-DAPI.tif'
-full_name=name.replace('_S_','_B_')
-print(name.replace('_S_','_B_'))
+parser.add_argument(
+        "-a",
+        "--autotune",
+        dest="autotune",
+        action="store_true",
+        required=False,
+        help="Flag to autotune the parameters [default=True].")
+
+args=parser.parse_args()
+
+
+
+#name='C-001_S-000_S_DAPI_R-01_W-A01_ROI-01_A-DAPI.tif'
+#full_name=name.replace('_S_','_B_')
+print(args.autotune)
+
+
 
 
 

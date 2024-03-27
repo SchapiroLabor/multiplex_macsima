@@ -164,87 +164,13 @@ def cycle_info(cycle_no,cycles_path=cycles_dir,cycles=cycles_list,ref_marker='DA
     
 
     markers= info['marker'].unique()
-    markers_subset=np.setdiff1d(markers,[ref_marker])
-
     
     info['rack']=pd.to_numeric(info['rack'],downcast='unsigned')
     info['well']=pd.to_numeric(info['well'],downcast='unsigned')
     info['roi']=pd.to_numeric(info['roi'],downcast='unsigned')
-    info['fov']=pd.to_numeric(info['fov'],downcast='unsigned')
-    info['exposure']=pd.to_numeric(info['exposure'],downcast='unsigned')
     
     return info
 
-
-def bleach_cycle_info(antigen_cycle_no=antigen_cycle_number,cycles_path=cycles_dir,ref_marker='DAPI'):
-    bleach_cycle_no=antigen_cycle_no
-    bleach_cycle=f'{bleach_cycle_no:03d}'
-    cycle_folder='_'.join([bleach_cycle,'BleachCycle'])
-    workdir=os.path.join(cycles_path,cycle_folder)
-    images=list(filter(lambda x: x.endswith('.tif'),os.listdir(workdir)))
-    cycle_info={'img_full_path':[],
-                'image':images,
-                'marker':[],
-                'filter':[],
-                'rack':[],
-                'well':[],
-                'roi':[],
-                'fov':[],
-                'exposure':[]
-               }
-
-    for im in images:
-        
-        marker_info=im.split('BleachCycle')[-1].split('_')
-        acq_info=im.split('sensor')[-1].split('_')
-        #add the information to the cycle_info dictionary
-        #img full path
-        cycle_info['img_full_path'].append(os.path.join(workdir,im))
-        #marker and fluorophore
-        #marker_info=['', 'DAPI', 'V0', 'DAPI', '16bit', 'M-20x-S Fluor full sensor', 'B-1', 'R-1', 'W-2', 'G-1', 'F-10', 'E-16.0.tif']
-        m=marker_info[1]
-        if m==ref_marker:
-            cycle_info['marker'].append(ref_marker)
-        else:
-            cycle_info['marker'].append('_'.join([bleach_cycle,'bleach',marker_info[3]]))
-        cycle_info['filter'].append(marker_info[3])
-        #rack
-        cycle_info['rack'].append(acq_info[2].split('-')[-1])
-        #well
-        cycle_info['well'].append(acq_info[3].split('-')[-1])
-        #roi
-        cycle_info['roi'].append(acq_info[4].split('-')[-1])
-        #fov, i.e. tiles
-        cycle_info['fov'].append(acq_info[5].split('-')[-1])
-        #exposure
-        exposure=cycle_info['exposure'].append(acq_info[6].split('-')[-1].strip('.tif'))        
-        
-    info=pd.DataFrame(cycle_info)
-    
-
-    markers= info['filter'].unique()
-    markers_subset=np.setdiff1d(markers,[ref_marker])
-    info.insert(len(cycle_info),'exposure_level',np.zeros(info.shape[0]))
-    info.loc[ info['marker']==ref_marker, 'exposure_level']='ref'
-    #info.to_csv(os.path.join(cycles_path,'test_bleach.csv'))
-
-
-    for m in markers_subset:
-        exposure=info.loc[info['filter']==m]['exposure'].unique()
-        val=pd.to_numeric(exposure)
-        val=np.sort(val)
-        for level,value in enumerate(val):
-            info.loc[ (info['filter']==m) & (info['exposure']==str(value)), 'exposure_level']=level+1
-    
-            
-
-    info['rack']=pd.to_numeric(info['rack'],downcast='unsigned')
-    info['well']=pd.to_numeric(info['well'],downcast='unsigned')
-    info['roi']=pd.to_numeric(info['roi'],downcast='unsigned')
-    info['fov']=pd.to_numeric(info['fov'],downcast='unsigned')
-    info['exposure']=pd.to_numeric(info['exposure'],downcast='unsigned')
-    
-    return info
 
 def create_dir(dir_path):
     if os.path.exists(dir_path):
@@ -270,7 +196,7 @@ def create_ome(img_info,xy_tile_positions_units,img_path):
     tifff.tiffcomment(img_path,'')
     #--Generate tiff_data_blocks--#
     tiff_block=[]
-    UUID=ome_types.model.tiff_data.UUID(file_name=img_name,value=uuid4().urn)
+    UUID=ome_types.model.tiff_data.UUID(value=uuid4().urn)
     for ch in range(0,no_of_channels):
         tiff_block.append(TiffData(first_c=ch,
                                     ifd=ch,
