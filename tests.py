@@ -1,36 +1,53 @@
-import os 
+#!/usr/bin/python
+import ome_types
+import numpy as np
+import pandas as pd
 from pathlib import Path
-from operator import itemgetter
+#from PIL import Image
+#import PIL
+#from PIL.TiffTags import TAGS
+import tifffile as tifff
+from bs4 import BeautifulSoup
+import os
+from uuid import uuid4
+import copy
+from ome_types import from_tiff,to_xml
+from ome_types.model import OME,Image,Instrument,Pixels,TiffData,Channel,Plane
+import ome_types.model
+import platform
 import argparse
-import logging
-from argparse import ArgumentParser as AP
-from os.path import splitext
-from pathlib import Path
 
-parser=argparse.ArgumentParser()
-cycles_dir=Path('C:/Users/vp232003/repos/test_data/macsima_v2')
- 
-def pull_all_cycles( cycles_path=cycles_dir):
-    folders=list(filter(lambda x: 'Cycle' in x ,os.listdir( cycles_path )))
-    aux_list={ int(f.split('Cycle_')[-1]):f for f in folders } 
-    folders=dict( sorted(aux_list.items(),reverse=False) )  
-    #aux_list=sorted(aux_list,key=itemgetter(1),reverse=False)
-    return folders
 
-cycles_list=pull_all_cycles(cycles_dir)
-
-def cycle_info(cycle_no=1,cycles_path=cycles_dir ,cycles=cycles_list,ref_marker='DAPI'):
-
-    workdir=cycles_path / cycles[cycle_no]
-    images=list(filter(lambda x: x.endswith('.tif'),os.listdir(workdir)))
-    signal_images=list( filter(lambda x: '_S_' in x ,images) )
-    bleach_images=list( filter(lambda x: '_B_' in x ,images) )
-    print(signal_images)
-    print(bleach_images)
+def marker_filter_map(info,ref_marker='DAPI'):
+    markers= info['marker'].unique()
+    markers_subset=np.setdiff1d(markers,[ref_marker])
+    sorted_markers=[ref_marker]
+    sorted_filters=[ref_marker]
+    for m in markers_subset:
+        filters=info.loc[info['marker']==m,'filter'].unique()
+        sorted_filters.extend(filters)
+        for _ in range(0,len(filters)):
+            sorted_markers.append(m)
     
+    return sorted_markers,sorted_filters
 
-    cycle_info={'img_full_path':[],
-                'image':images,
+
+
+
+def cycle_info(cycle_no,cycles_path,ref_marker='DAPI'):
+
+    cycle_folder=list(filter( lambda x:  ('Cycle{n}'.format(n=cycle_no) in x.split('_')[-1] ) and ( len(x.split('_')[-1])==len('Cycle')+len(str(cycle_no)) )  , os.listdir(cycles_path) ) )
+    cycle_folder=cycle_folder[0]
+    workdir=cycles_path / cycle_folder
+    images=list(filter(lambda x: x.endswith('.tif'),os.listdir(workdir)))
+    antigen_images=list( filter(lambda x: '_ST-S_' in x ,images) )
+
+
+    cycle_info={'cycle':[],
+                'antigen_full_path':[],
+                'bleach_full_path':[],
+                'antigen_image':[],
+                'bleach_image':[],
                 'marker':[],
                 'filter':[],
                 'rack':[],
@@ -40,318 +57,74 @@ def cycle_info(cycle_no=1,cycles_path=cycles_dir ,cycles=cycles_list,ref_marker=
                 'exposure':[]
                }
 
-#cycle_info()
 
-parser.add_argument(
-        "-a",
-        "--autotune",
-        dest="autotune",
-        action="store_true",
-        required=False,
-        help="Flag to autotune the parameters [default=True].")
-
-args=parser.parse_args()
-
-
-
-#name='C-001_S-000_S_DAPI_R-01_W-A01_ROI-01_A-DAPI.tif'
-#full_name=name.replace('_S_','_B_')
-print(args.autotune)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
+
+    for im in antigen_images:
+
+        file_tags=im.split('_')
+        im_bg=im.replace('_ST-S_','_ST-B_')
+        im_bg=im_bg.replace('_SCN-002_','_SCN-001_')
+
+        cycle_info['cycle'].append(cycle_no)
+        cycle_info['antigen_full_path'].append( workdir / im )
+        cycle_info['bleach_full_path'].append( workdir / im_bg )
+        cycle_info['antigen_image'].append( im )
+        cycle_info['bleach_image'].append( im_bg )
+
+        marker_name=file_tags[7].split('-')[-1]
+        filter_name=file_tags[-2].split('-')[-1]
+        rack=int( file_tags[3].split('-')[-1] )
+        well=file_tags[4].split('-')[-1] 
+        roi =int( file_tags[5].split('-')[-1] )
+        tile=int( file_tags[6].split('-')[-1])
+        exp=(file_tags[-1].split('-')[-1]).strip('.tif')
+
+
+        cycle_info['marker'].append( marker_name )
+        cycle_info['filter'].append( filter_name )
+
+        cycle_info['rack'].append( rack )
+        cycle_info['well'].append( well )
+        cycle_info['roi'].append (  roi )
+        cycle_info['fov'].append (  tile )
+        cycle_info['exposure'].append (  exp )
+     
+        
+    info=pd.DataFrame(cycle_info)
+    
+
+    #markers= info['marker'].unique()
+    
+    #markers_subset=np.setdiff1d(markers,[ref_marker])
+    info.insert(len(cycle_info),'exposure_level',np.zeros(info.shape[0]))
+   #info.loc[ info['marker']==ref_marker, 'exposure_level']='ref'
+
+    #for m in markers_subset:
+    sorted_markers,sorted_filters=marker_filter_map(info,ref_marker)
+    for m,f in zip(sorted_markers,sorted_filters):
+        #exposure=info.loc[info['marker']==m]['exposure'].unique()
+        if m==ref_marker:
+            info.loc[ info['marker']==ref_marker, 'exposure_level']='ref'
+        else:
+            exposure=info.loc[(info['marker']==m) & (info['filter']==f) ]['exposure'].unique()
+            val_map=[ (float(e),e) for e in exposure]
+            val_map.sort(key=lambda a: a[0])
+            for level,values in enumerate(val_map,1):
+                info.loc[ (info['marker']==m) & (info['exposure']==values[1]), 'exposure_level']=level
+            
+
+    info['rack']=pd.to_numeric(info['rack'],downcast='unsigned')
+    info['roi']=pd.to_numeric(info['roi'],downcast='unsigned')
+    info['fov']=pd.to_numeric(info['fov'],downcast='unsigned')
+    info['exposure']=pd.to_numeric(info['exposure'],downcast='unsigned')
+    
+    return info
+
+cycle_data=cycle_info(1,Path('D:/macsima_v2'))
+cycle_data.to_csv('D:/cycle_info.csv',index=False)
+
+
+
+
+print(dir(tifff))

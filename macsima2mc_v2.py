@@ -21,6 +21,7 @@ import argparse
 #---CLI-BLOCK---#
 parser=argparse.ArgumentParser()
 
+#Mandatory arguments
 
 parser.add_argument('-i',
                     '--input',
@@ -45,6 +46,7 @@ parser.add_argument('-c',
                     this input will accept a list of any number of specific cycles.'
                     )
 
+#Optional arguments
 
 parser.add_argument('-ofl',
                     '--output_folders_list',
@@ -71,6 +73,12 @@ parser.add_argument('-nb',
                         only the antigen images will be extracted.'
                     )
 
+parser.add_argument('-rr',
+                    '--remove_reference_marker',
+                    action='store_true',
+                    help='Set up in the markers.csv file the removal of the reference markers in all cycles except for the first one.'
+                    )
+
 args=parser.parse_args()
 #---END_CLI-BLOCK---#
 
@@ -85,10 +93,10 @@ condition=args.input_mode_list
 if (condition==False and len(args.cycles)==2):
     start=min(args.cycles)
     end=max(args.cycles)
-    antigen_cycle_number=list(range(start,1+end))
+    cycle_numbers=list(range(start,1+end))
 
 elif condition==True:
-    antigen_cycle_number=args.cycles
+    cycle_numbers=args.cycles
 
 else:
     print('Wrong input, try one of the following: \n',
@@ -102,27 +110,44 @@ if os.path.exists(stack_path):
 else:
     os.mkdir(stack_path)
 #----Extract names of all cycles
-def pull_all_cycles( cycles_path):
-    folders=list(filter(lambda x: 'Cycle' in x ,os.listdir( cycles_path )))
-    aux_list={ int(f.split('Cycle_')[-1]):f for f in folders } 
-    folders=dict( sorted(aux_list.items(),reverse=False) )  
-    #aux_list=sorted(aux_list,key=itemgetter(1),reverse=False)
-    return folders
+#def pull_all_cycles( cycles_path):
+#   folders=list(filter(lambda x: 'Cycle' in x ,os.listdir( cycles_path )))
+#    aux_list={ int(f.split('Cycle_')[-1]):f for f in folders } 
+#   folders=dict( sorted(aux_list.items(),reverse=False) )  
+#   #aux_list=sorted(aux_list,key=itemgetter(1),reverse=False)
+#   return folders
 
-cycles_list=pull_all_cycles(cycles_dir)
+#cycles_list=pull_all_cycles(cycles_dir)
 
 #---- HELPER FUNCTIONS ----#
 
 
+def marker_filter_map(info,ref_marker='DAPI'):
+    markers= info['marker'].unique()
+    markers_subset=np.setdiff1d(markers,[ref_marker])
+    sorted_markers=[ref_marker]
+    sorted_filters=[ref_marker]
+    for m in markers_subset:
+        filters=info.loc[info['marker']==m,'filter'].unique()
+        sorted_filters.extend(filters)
+        for _ in range(0,len(filters)):
+            sorted_markers.append(m)
+    
+    return sorted_markers,sorted_filters
 
-def cycle_info(cycle_no,cycles_path=cycles_dir,cycles=cycles_list,ref_marker='DAPI'):
 
-    workdir=cycles_path / cycles[cycle_no]
+
+
+def cycle_info(cycle_no,cycles_path,ref_marker='DAPI'):
+
+    cycle_folder=list(filter( lambda x:  ('Cycle{n}'.format(n=cycle_no) in x.split('_')[-1] ) and ( len(x.split('_')[-1])==len('Cycle')+len(str(cycle_no)) )  , os.listdir(cycles_path) ) )
+    cycle_folder=cycle_folder[0]
+    workdir=cycles_path / cycle_folder
     images=list(filter(lambda x: x.endswith('.tif'),os.listdir(workdir)))
-    antigen_images=list( filter(lambda x: '_S_' in x ,images) )
+    antigen_images=list( filter(lambda x: '_ST-S_' in x ,images) )
 
 
-    cycle_info={'cycle':[]
+    cycle_info={'cycle':[],
                 'antigen_full_path':[],
                 'bleach_full_path':[],
                 'antigen_image':[],
@@ -132,6 +157,8 @@ def cycle_info(cycle_no,cycles_path=cycles_dir,cycles=cycles_list,ref_marker='DA
                 'rack':[],
                 'well':[],
                 'roi':[],
+                'fov':[],
+                'exposure':[]
                }
 
 
@@ -140,43 +167,66 @@ def cycle_info(cycle_no,cycles_path=cycles_dir,cycles=cycles_list,ref_marker='DA
     for im in antigen_images:
 
         file_tags=im.split('_')
+        im_bg=im.replace('_ST-S_','_ST-B_')
+        im_bg=im_bg.replace('_SCN-002_','_SCN-001_')
 
         cycle_info['cycle'].append(cycle_no)
         cycle_info['antigen_full_path'].append( workdir / im )
-        cycle_info['bleach_full_path'].append( workdir / im.replace('_S_','_B_') )
+        cycle_info['bleach_full_path'].append( workdir / im_bg )
         cycle_info['antigen_image'].append( im )
-        cycle_info['bleach_image'].append( im.replace('_S_','_B_') )
-        marker_name=file_tags[-1]
-        if ref_marker in marker_name:
+        cycle_info['bleach_image'].append( im_bg )
 
-            cycle_info['marker'].append( ref_marker )
-            cycle_info['filter'].append( ref_marker )
-        else:
-            cycle_info['marker'].append( file_tags[-1] )
-            cycle_info['filter'].append( file_tags[3] )
+        marker_name=file_tags[7].split('-')[-1]
+        filter_name=file_tags[-2].split('-')[-1]
+        rack=int( file_tags[3].split('-')[-1] )
+        well=file_tags[4].split('-')[-1] 
+        roi =int( file_tags[5].split('-')[-1] )
+        tile=int( file_tags[6].split('-')[-1])
+        exp=(file_tags[-1].split('-')[-1]).strip('.tif')
 
-        cycle_info['rack'].append( int(file_tags[4]) )
-        cycle_info['well'].append( int(file_tags[5]) )
-        cycle_info['roi'].append(  int(file_tags[6]) )
+
+        cycle_info['marker'].append( marker_name )
+        cycle_info['filter'].append( filter_name )
+
+        cycle_info['rack'].append( rack )
+        cycle_info['well'].append( well )
+        cycle_info['roi'].append (  roi )
+        cycle_info['fov'].append (  tile )
+        cycle_info['exposure'].append (  exp )
      
         
     info=pd.DataFrame(cycle_info)
     
 
-    markers= info['marker'].unique()
     
+    info.insert(len(cycle_info),'exposure_level',np.zeros(info.shape[0]))
+
+    sorted_markers,sorted_filters=marker_filter_map(info,ref_marker)
+    for m,f in zip(sorted_markers,sorted_filters):
+        #exposure=info.loc[info['marker']==m]['exposure'].unique()
+        if m==ref_marker:
+            info.loc[ info['marker']==ref_marker, 'exposure_level']='ref'
+        else:
+            exposure=info.loc[(info['marker']==m) & (info['filter']==f) ]['exposure'].unique()
+            val_map=[ (float(e),e) for e in exposure]
+            val_map.sort(key=lambda a: a[0])
+            for level,values in enumerate(val_map,1):
+                info.loc[ (info['marker']==m) & (info['exposure']==values[1]), 'exposure_level']=level
+            
+
     info['rack']=pd.to_numeric(info['rack'],downcast='unsigned')
-    info['well']=pd.to_numeric(info['well'],downcast='unsigned')
     info['roi']=pd.to_numeric(info['roi'],downcast='unsigned')
+    info['fov']=pd.to_numeric(info['fov'],downcast='unsigned')
+    info['exposure']=pd.to_numeric(info['exposure'],downcast='unsigned')
     
     return info
-
+    
 
 def create_dir(dir_path):
-    if os.path.exists(dir_path):
-        pass
-    else:
-        os.mkdir(dir_path)
+    
+    Path(dir_path).mkdir(parents=False, exist_ok=True)
+
+
 
 def create_ome(img_info,xy_tile_positions_units,img_path):
     img_name=img_info['name']
@@ -193,15 +243,16 @@ def create_ome(img_info,xy_tile_positions_units,img_path):
         pixel_size=1000*pixel_size
         #pixel_units='um'
     no_of_tiles=len(xy_tile_positions_units)
+    print(img_info)
     tifff.tiffcomment(img_path,'')
     #--Generate tiff_data_blocks--#
     tiff_block=[]
-    UUID=ome_types.model.tiff_data.UUID(value=uuid4().urn)
+    #UUID=ome_types.model.tiff_data.UUID(value=uuid4().urn)
     for ch in range(0,no_of_channels):
         tiff_block.append(TiffData(first_c=ch,
                                     ifd=ch,
-                                    plane_count=1,
-                                    uuid=UUID
+                                    plane_count=1#,
+                                    #uuid=UUID
                                 )
                          
                          )
@@ -317,86 +368,88 @@ def tile_position(metadata_string):
               }
     return tile_info
 
-def create_stack(info,exp_level=1,
-                 antigen_cycle_no=antigen_cycle_number,
-                 cycles_path=cycles_dir,
-                 isbleach=False,
-                 offset=0,
-                 device=device_name,
-                 ref_marker='DAPI',
-                 results_path=stack_path):
+def create_stack(info,
+                cycle_no,
+                exp_level,
+                device,
+                output_folder,
+                ref_marker='DAPI',
+                isbleach=False,
+                offset=0):
     
     racks=info['rack'].unique()
     wells=info['well'].unique()
-    antigen_cycle=f'{antigen_cycle_no:03d}'
-    if isbleach:
-        cycle_prefix='Bleach'
-    else:
-        cycle_prefix='Antigen'
 
-    cycle_folder='_'.join([antigen_cycle,cycle_prefix+'Cycle'])
-    workdir=os.path.join(cycles_path,cycle_folder)    
-    #img_ref=PIL.Image.open(info['img_full_path'][0])
-    #width=img_ref.width
-    #height=img_ref.height
-    #dtype_ref=tifff.imread(info['img_full_path'][0]).dtype
-    with tifff.TiffFile(info['img_full_path'][0]) as tif:
+    sorted_markers,sorted_filters=marker_filter_map(info,ref_marker)
+    markers_subset=sorted_markers[1::]
+    filters_subset=sorted_filters[1::]
+
+
+
+
+    if isbleach:
+
+        stack_prefix='Background'
+        tile_path='bleach_full_path'
+        cycle_number_tag='bg_'+f'{(offset+cycle_no):03d}'
+        target_name='filters'
+        target='_'.join(sorted_filters)
+        
+        sorted_markers=[ 'bg_{n}_{mark}-{filt}'.format(n=f'{cycle_no:03d}',mark=ma,filt=fi) for ma,fi in zip(sorted_markers,sorted_filters) ]
+        
+    else:
+        stack_prefix='Antigen'
+        tile_path='antigen_full_path'
+        cycle_number_tag=f'{(offset+cycle_no):03d}'
+        target_name='markers'
+        target='_'.join(sorted_markers)
+
+    with tifff.TiffFile(info[tile_path][0]) as tif:
         img_ref=tif.pages[0].asarray()
     width=img_ref.shape[1]
     height=img_ref.shape[0]
     dtype_ref=img_ref.dtype
-    ref_marker= list(info.loc[ info['exposure_level']=='ref', 'marker'])[0]
-    markers= info['marker'].unique()
-    markers_subset=np.setdiff1d(markers,[ref_marker])
-    sorted_markers=np.insert(markers_subset,0,ref_marker)
-    sorted_filters=[]
-    for m in sorted_markers:
-            sorted_filters.append(info.loc[info['marker']==m,'filter'].tolist()[0])
-    if isbleach:
-        target_name='filters'
-        target='_'.join(sorted_filters)
-    else:
-        target_name='markers'
-        target='_'.join(sorted_markers)
+
+
+                
+    #if isbleach:
+    #   target_name='filters'
+    #    target='_'.join(sorted_filters)
+        
+    #    sorted_markers=[ 'bg-{n}_{mark}-{filt}'.format(n=f'{cycle_no:03d}',mark=ma,filt=fi) for ma,fi in zip(sorted_markers,sorted_filters) ]
+    #else:
+    #    target_name='markers'
+    #    target='_'.join(sorted_markers)
 
     
     for r in racks:
         output_levels=[]
         rack_no='rack_{n}'.format(n=f'{r:02d}')
         output_levels.append(rack_no)
-        #rack_path=stack_path / 'rack_{n}'.format(n=f'{r:02d}')
-        #create_dir(rack_path)
 
         for w in wells:
 
-            well_no='well_{n}'.format(n=f'{w:02d}')
+            well_no='well_{well_name}'.format(well_name=w)
             output_levels.append(well_no)
-            #well_path=rack_path / 'well_{n}'.format(n=f'{w:02d}')
-            #create_dir(well_path)
-        
             groupA=info.loc[(info['rack']==r) & (info['well']==w)]
             rois=groupA['roi'].unique()
             
             for roi in rois:
+
                 roi_no='roi_{n}'.format(n=f'{roi:02d}')
                 exp_level_no='exp_level_{n}'.format(n=f'{exp_level:02d}')
-                #roi_path=well_path / 'roi_{n}'.format(n=f'{roi:02d}')
-                #create_dir(roi_path)
-                #exposure_path=roi_path / 'exp_level_{n}'.format(n=f'{exp_level:02d}')
-                #create_dir(exposure_path)
                 output_levels.append(roi_no)
                 output_levels.append(exp_level_no)
 
-                
                 counter=0
                 groupB=groupA.loc[groupA['roi']==roi]
                 A=groupB.loc[(groupB['exposure_level']=='ref')]
-                stack_size_z=A.shape[0]*len(markers)
+                stack_size_z=A.shape[0]*len(sorted_markers)
                 fov_id=groupB.loc[groupB['marker']==ref_marker,'fov'].unique()
                 fov_id=np.sort(fov_id)
                 
-                stack_name='cycle-{C}-{prefix}-exp-{E}-rack-{R}-well-{W}-roi-{ROI}-{T}-{M}.{img_format}'.format(C=f'{(offset+antigen_cycle_no):03d}',
-                                                                                                       prefix=cycle_prefix,
+                stack_name='cycle-{C}-{prefix}-exp-{E}-rack-{R}-well-{W}-roi-{ROI}-{T}-{M}.{img_format}'.format(C=cycle_number_tag,
+                                                                                                       prefix=stack_prefix,
                                                                                                        E=exp_level,
                                                                                                        R=r,
                                                                                                        W=w,
@@ -414,18 +467,17 @@ def create_stack(info,exp_level=1,
                 exposure_per_marker=[]
                 exp=groupB.loc[(groupB['marker']==ref_marker) & (groupB['fov']==1) & (groupB['exposure_level']=='ref'),'exposure'].tolist()[0]
                 exposure_per_marker.append(exp)
-                for s in markers_subset:
-                    exp=groupB.loc[(groupB['marker']==s) & (groupB['fov']==1) & (groupB['exposure_level']==exp_level),'exposure'].tolist()[0]
+                for ms,fs in zip(markers_subset,filters_subset):
+                    exp=groupB.loc[(groupB['marker']==ms) & (groupB['filter']==fs) & (groupB['fov']==1) & (groupB['exposure_level']==exp_level),'exposure'].tolist()[0]
                     exposure_per_marker.append(exp)
                 
                 for tile in fov_id:
                     
-                    img_ref=groupB.loc[(groupB['marker']==ref_marker) & (groupB['fov']==tile) ,'img_full_path'].tolist()
+                    img_ref=groupB.loc[(groupB['marker']==ref_marker) & (groupB['fov']==tile) ,tile_path].tolist()
                     
                 
                     if len(img_ref)>0:
-                        #img=tifff.imread(img_ref[0])
-                        #img_PIL=PIL.Image.open(img_ref[0])
+
                         with tifff.TiffFile(img_ref[0]) as tif:
                             img=tif.pages[0].asarray()
                             metadata=tif.ome_metadata
@@ -436,16 +488,16 @@ def create_stack(info,exp_level=1,
                         Y.append(tile_data['y'])
                         counter+=1
                         
-                        for m in markers_subset:
-                            img_marker=groupB.loc[(groupB['marker']==m) & (groupB['fov']==tile) & (groupB['exposure_level']==exp_level),'img_full_path'].tolist()[0]
+                        for ms,fs in zip(markers_subset,filters_subset):
+                            img_marker=groupB.loc[(groupB['marker']==ms) & (groupB['filter']==fs) & (groupB['fov']==tile) & (groupB['exposure_level']==exp_level),tile_path].tolist()[0]
                             img=tifff.imread(img_marker)
                             stack[counter,:,:]=img
                             counter+=1
                 
                 if args.output_folders_list:
-                    output_folders_path=stack_path / '--'.join(output_levels) / 'raw'
+                    output_folders_path=output_folder / '--'.join(output_levels) / 'raw'
                 else:
-                    output_folders_path=stack_path / Path('/'.join(output_levels)) / 'raw'
+                    output_folders_path=output_folder / Path('/'.join(output_levels)) / 'raw'
 
 
                 if os.path.exists(output_folders_path):
@@ -457,7 +509,7 @@ def create_stack(info,exp_level=1,
                 tifff.imwrite(final_stack_path, stack, photometric='minisblack')  
                 img_info={'name':stack_name,
                           'device':device_name,
-                          'no_channels':len(markers),
+                          'no_channels':len(sorted_markers),
                           'markers':sorted_markers,
                           'filters':sorted_filters,
                           'exposure_times':exposure_per_marker,
@@ -473,16 +525,6 @@ def create_stack(info,exp_level=1,
 
 
 
-def markers_cycle_table(info,antigen_cycle_no=antigen_cycle_number):
-    ref_marker= list(info.loc[ info['exposure_level']=='ref', 'marker'])[0]
-    markers= info['marker'].unique()
-    markers_subset=np.setdiff1d(markers,[ref_marker])
-    antigens=[ref_marker]
-    cycles=[antigen_cycle_no]
-    for m in markers_subset:
-            cycles.append(antigen_cycle_no)
-            antigens.append(m)
-    return cycles,antigens
 
 
 def main(): 
@@ -498,11 +540,11 @@ def main():
 
     out_ble=copy.deepcopy(out_ant)
     
-    offset_value=1+max(antigen_cycle_number)
+    #offset_value=1+max(cycle_numbers)
 
-    for i in antigen_cycle_number:
-        antigen_info=antigen_cycle_info(antigen_cycle_no=i)
-        exp=antigen_info['exposure_level'].unique()
+    for cycle_ in cycle_numbers:
+        cycle_tiles_info=cycle_info(cycle_,cycles_dir,ref_marker='DAPI')
+        exp=cycle_tiles_info['exposure_level'].unique()
         exp=exp[exp!='ref']
         exp.sort()
 
@@ -511,18 +553,14 @@ def main():
         else:
             pass
 
-        print('extracting antigen cycle:',i)
+        print('extracting cycle:',cycle_)
 
         extract_bleach=args.no_bleach_cycles
-        if extract_bleach:
-            bcycle=i-1
-            bleach_info=bleach_cycle_info(antigen_cycle_no=bcycle)
             
 
         for e in exp:
-            antigen_stack_info=create_stack(antigen_info,antigen_cycle_no=i,exp_level=e)
-
-            out_ant['cycle_number'].extend(antigen_stack_info['no_channels']*[i])
+            antigen_stack_info=create_stack(cycle_tiles_info,cycle_,e,device_name,stack_path)
+            out_ant['cycle_number'].extend(antigen_stack_info['no_channels']*[cycle_])
             out_ant['marker_name'].extend(antigen_stack_info['markers'])
             out_ant['Filter'].extend(antigen_stack_info['filters'])
             out_ant['remove'].extend(antigen_stack_info['no_channels']*[''])
@@ -530,17 +568,18 @@ def main():
             out_ant['exposure_level'].extend(antigen_stack_info['no_channels']*[e])
 
             if extract_bleach:
-                print('extracting bleaching cycle:',bcycle)
-                bleach_stack_info=create_stack(bleach_info,antigen_cycle_no=bcycle,isbleach=True,offset=offset_value,exp_level=e)
+                print('extracting bleaching cycle:',cycle_)
+                bleach_stack_info=create_stack(cycle_tiles_info,cycle_,e,device_name,stack_path,isbleach=True)
                 background_channels=['']#the blank string corresponds to the reference marker, it is always the first in the sorted_markers list
-                for m in antigen_stack_info['filters'][1::]:
-                    ch_name=[x for x in bleach_stack_info['markers'] if m in x]
+                for fi in antigen_stack_info['filters'][1::]:
+                    #ch_name=['bg-{n}_{mark_filt}'.format(mark_filt=x,n=f'{cycle_:03d}') for x in bleach_stack_info['markers'] if fi in x]
+                    ch_name=[x for x in bleach_stack_info['markers'] if fi in x]
                     background_channels.extend(ch_name)
                 
                 out_ant['background'].extend(background_channels)
 
                 out_ble['background'].extend(bleach_stack_info['no_channels']*[''])
-                out_ble['cycle_number'].extend(bleach_stack_info['no_channels']*[offset_value+bcycle])
+                out_ble['cycle_number'].extend(bleach_stack_info['no_channels']*[cycle_])
                 out_ble['marker_name'].extend(bleach_stack_info['markers'])
                 out_ble['Filter'].extend(bleach_stack_info['filters'])
                 out_ble['remove'].extend(bleach_stack_info['no_channels']*['TRUE'])
@@ -552,15 +591,27 @@ def main():
 
 
     for e in exp:
+        print(e)
         if extract_bleach:
+            for key,value in out_ant.items():
+                print(key,':',value)
             df1=pd.DataFrame(out_ant).groupby('exposure_level').get_group(e)
             df2=pd.DataFrame(out_ble).groupby('exposure_level').get_group(e)
             df=pd.concat([df1,df2],ignore_index=True)
         else:
             df=pd.DataFrame(out_ant).groupby('exposure_level').get_group(e)
+
         df.drop('exposure_level',axis=1,inplace=True)
         df.insert(0,'channel_number',list(range(1,1+df.shape[0])))
-        df.to_csv(stack_path / 'markers_exp_{level}.csv'.format(level=e),index=False)
+
+        if args.remove_reference_marker:
+            dna_indices=df.loc[df['marker_name']=='DAPI'].index.values
+            for n,i in enumerate(dna_indices):
+                if n>0:
+                    df.at[i,'remove']='TRUE'
+
+        df.to_csv( stack_path / 'markers_exp_{level}.csv'.format(level=e),index=False)
+
 
 if __name__=='__main__':
     main()
