@@ -590,8 +590,8 @@ def main():
 
 
     for e in exp:
+        print(e)
         if extract_bleach:
-            for key,value in out_ant.items():
             df1=pd.DataFrame(out_ant).groupby('exposure_level').get_group(e)
             df2=pd.DataFrame(out_ble).groupby('exposure_level').get_group(e)
             df=pd.concat([df1,df2],ignore_index=True)
