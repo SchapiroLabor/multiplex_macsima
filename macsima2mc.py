@@ -470,7 +470,6 @@ def create_stack(info,exp_level=1,
         
             groupA=info.loc[(info['rack']==r) & (info['well']==w)]
             rois=groupA['roi'].unique()
-            print("remember to delete the line below line 467")
             rois=[1]
             for roi in rois:
                 roi_no='roi_{n}'.format(n=f'{roi:02d}')
@@ -514,8 +513,7 @@ def create_stack(info,exp_level=1,
                 exp=groupB.loc[(groupB['marker']==ref_marker) & (groupB['fov']==1) & (groupB['exposure_level']=='ref'),'exposure'].tolist()[0]
                 exposure_per_marker.append(exp)
                 for s in markers_subset:
-                    #print(s)
-                    #print("test",groupB.loc[(groupB['marker']==s) & (groupB['fov']==1) & (groupB['exposure_level']==exp_level),'exposure'].tolist())
+
                     exp=groupB.loc[(groupB['marker']==s) & (groupB['fov']==1) & (groupB['exposure_level']==exp_level),'exposure'].tolist()[0]
                     exposure_per_marker.append(exp)
                 
