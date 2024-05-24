@@ -72,6 +72,12 @@ parser.add_argument('-nb',
                         only the antigen images will be extracted.'
                     )
 
+parser.add_argument('-rr',
+                    '--remove_reference_marker',
+                    action='store_true',
+                    help='Set up in the markers.csv file the removal of the reference markers in all cycles except for the first one.'
+                    )
+
 args=parser.parse_args()
 #---END_CLI-BLOCK---#
 
@@ -668,7 +674,17 @@ def main():
             df=pd.DataFrame(out_ant).groupby('exposure_level').get_group(e)
         df.drop('exposure_level',axis=1,inplace=True)
         df.insert(0,'channel_number',list(range(1,1+df.shape[0])))
+
+        if args.remove_reference_marker:
+            dna_indices=df.loc[df['marker_name']=='DAPI'].index.values
+            for n,i in enumerate(dna_indices):
+                if n>0:
+                    df.at[i,'remove']='TRUE'
+
         df.to_csv(stack_path / 'markers_exp_{level}.csv'.format(level=e),index=False)
+
+
+    
 
 if __name__=='__main__':
     main()
