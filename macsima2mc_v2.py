@@ -243,7 +243,6 @@ def create_ome(img_info,xy_tile_positions_units,img_path):
         pixel_size=1000*pixel_size
         #pixel_units='um'
     no_of_tiles=len(xy_tile_positions_units)
-    print(img_info)
     tifff.tiffcomment(img_path,'')
     #--Generate tiff_data_blocks--#
     tiff_block=[]
@@ -591,10 +590,8 @@ def main():
 
 
     for e in exp:
-        print(e)
         if extract_bleach:
             for key,value in out_ant.items():
-                print(key,':',value)
             df1=pd.DataFrame(out_ant).groupby('exposure_level').get_group(e)
             df2=pd.DataFrame(out_ble).groupby('exposure_level').get_group(e)
             df=pd.concat([df1,df2],ignore_index=True)
