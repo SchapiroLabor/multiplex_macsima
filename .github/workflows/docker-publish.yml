@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 name: Docker
+=======
+name: docker for macsima2mc 
+>>>>>>> cac069408c04d8cb74f40fef1bb42cf5a2f28af9
 
 # This workflow uses actions that are not certified by GitHub.
 # They are provided by a third-party and are governed by
@@ -37,9 +41,9 @@ jobs:
       # https://github.com/sigstore/cosign-installer
       - name: Install Cosign
         if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@v3.1.1
+        uses: sigstore/cosign-installer@v3.5.0
         with:
-          cosign-release: 'v2.2.1'
+          cosign-release: 'v2.2.4'
           
       # Workaround: https://github.com/docker/build-push-action/issues/461
       - name: Setup Docker buildx
