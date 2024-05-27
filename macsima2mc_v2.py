@@ -567,7 +567,7 @@ def main():
             out_ant['exposure_level'].extend(antigen_stack_info['no_channels']*[e])
 
             if extract_bleach:
-                print('extracting bleaching cycle:',cycle_)
+                #print('extracting bleaching cycle:',cycle_)
                 bleach_stack_info=create_stack(cycle_tiles_info,cycle_,e,device_name,stack_path,isbleach=True)
                 background_channels=['']#the blank string corresponds to the reference marker, it is always the first in the sorted_markers list
                 for fi in antigen_stack_info['filters'][1::]:
@@ -590,7 +590,7 @@ def main():
 
 
     for e in exp:
-        print(e)
+        #print(e)
         if extract_bleach:
             df1=pd.DataFrame(out_ant).groupby('exposure_level').get_group(e)
             df2=pd.DataFrame(out_ble).groupby('exposure_level').get_group(e)
