@@ -38,7 +38,7 @@ parser.add_argument('-o',
 
 parser.add_argument('-c',
                     '--cycles',
-                    required=True,
+                    required=True,1
                     type=int,
                     nargs='*',
                     help='By default this input accepts two integer numbers which mark the \
