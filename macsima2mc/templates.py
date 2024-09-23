@@ -33,9 +33,9 @@ def info_dic(target_pattern):
     template={}
     template['full_path']=''
     template['img_name']=''
-    
+
     for key in target_pattern:
-        pattern[key]=''
+        template[key]=''
     
     return template
 
@@ -50,7 +50,7 @@ def macsima_pattern(version=1):
             "well"  :  r"_W-(\d+)",
             "roi"   :  r"_G-(\d+)",
             "tile"  :  r"_F-(\d+)",
-            "exposure":r"_E-(\d+)",
+            "exposure_time":r"_E-(\d+)",
             "marker":  r"Cycle_(.*?)_",
             "filter":  r".*_([^_]*)_\d+bit"
                 }
@@ -64,7 +64,7 @@ def macsima_pattern(version=1):
             "well":  r"_W-(.*?\d+)",
             "roi":   r"_ROI-(\d+)",
             "tile":  r"_F-(\d+)",
-            "exposure": r"_EXP-(\d+(?:\.\d+)?)",
+            "exposure_time": r"_EXP-(\d+(?:\.\d+)?)",
             "marker": r"_A-(.*?)_",
             "filter": r"_D-(.*?)_"   
             }

@@ -1,15 +1,17 @@
 import helpers 
 from pathlib import Path
-from templates import macsima_pattern,info_dic
-
-#data_folder=Path('D:/macsima_data_samples/macsima_data_v1/001_AntigenCycle')
-#images=list(data_folder.glob("*.tif"))
-
-img_test=Path('000_BleachCycle_None_V50_PE_16bit_M-20x-S Fluor full sensor_B-1_R-2_W-2_G-1_F-30_E-144.0.tif')
-
-def extract_img_info(img_test, macsima_pattern, info_dic,ref_marker= 'DAPI',dir_version=1)
+from templates import macsima_pattern
+import pandas as pd
+import os
 
 
+input_test_folder=Path("D:/macsima_data_samples/macsima_data_v2/6_Cycle1")
+output_test_folder=Path('D:/test_folder')
+
+info=helpers.cycle_info(input_test_folder, macsima_pattern(version=2),ref_marker= 'DAPI')
+info_extra=helpers.append_extra_info(info)
+info_extra.to_csv( output_test_folder / 'cycle_{c}_info.csv'.format(c=f'{6:03d}'), index=False )
+helpers.create_stack(info_extra,output_test_folder,ref_marker='DAPI')
 
 
 

@@ -464,14 +464,13 @@ def create_stack(info,
                 stack=np.zeros((stack_size_z,height,width),dtype=dtype_ref)
                 
                 exposure_per_marker=[]
-                exp=groupB.loc[(groupB['marker']==ref_marker) & (groupB['fov']==1) & (groupB['exposure_level']=='ref'),'exposure'].tolist()[0]
+                exp=groupB.loc[(groupB['marker']==ref_marker) & (groupB['fov']==fov_id[0]) & (groupB['exposure_level']=='ref'),'exposure'].tolist()[0]
                 exposure_per_marker.append(exp)
                 for ms,fs in zip(markers_subset,filters_subset):
-                    exp=groupB.loc[(groupB['marker']==ms) & (groupB['filter']==fs) & (groupB['fov']==1) & (groupB['exposure_level']==exp_level),'exposure'].tolist()[0]
+                    exp=groupB.loc[(groupB['marker']==ms) & (groupB['filter']==fs) & (groupB['fov']==fov_id[0]) & (groupB['exposure_level']==exp_level),'exposure'].tolist()[0]
                     exposure_per_marker.append(exp)
                 
                 for tile in fov_id:
-                    
                     img_ref=groupB.loc[(groupB['marker']==ref_marker) & (groupB['fov']==tile) ,tile_path].tolist()
                     
                 
@@ -488,6 +487,11 @@ def create_stack(info,
                         counter+=1
                         
                         for ms,fs in zip(markers_subset,filters_subset):
+                            print('marker',ms)
+                            print('filter',fs)
+                            print('tile',tile)
+                            print('exp',exp_level)
+                            print(tile_path)
                             img_marker=groupB.loc[(groupB['marker']==ms) & (groupB['filter']==fs) & (groupB['fov']==tile) & (groupB['exposure_level']==exp_level),tile_path].tolist()[0]
                             img=tifff.imread(img_marker)
                             stack[counter,:,:]=img
@@ -543,6 +547,7 @@ def main():
 
     for cycle_ in cycle_numbers:
         cycle_tiles_info=cycle_info(cycle_,cycles_dir,ref_marker='DAPI')
+        cycle_tiles_info.to_csv('cycle_{c}.csv'.format(c=cycle_))
         exp=cycle_tiles_info['exposure_level'].unique()
         exp=exp[exp!='ref']
         exp.sort()
