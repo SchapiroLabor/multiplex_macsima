@@ -47,6 +47,10 @@ def xy_coords(tile_abs_path):
             "size_y":ome.Pixels["SizeY"],
             "type": ome.Pixels["Type"],#bit_depth
             "significant_bits": int(ome.Pixels["SignificantBits"]),
+            "emission_wavelenght":ome.Channel["EmissionWavelength"],
+            "excitation_wavelenght":ome.Channel["ExcitationWavelength"],
+            "emission_wavelenght_unit":ome.Channel["EmissionWavelengthUnit"],
+            "excitation_wavelenght_unit":ome.Channel["ExcitationWavelengthUnit"]
             }
 
 
