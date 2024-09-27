@@ -27,7 +27,7 @@ def INPUTS(frame,conformed_markers):
 
 
 
-def TIFF_block(no_of_channels,
+def TIFF_array(no_of_channels,
                 inputs={'offset':0}
                 ):
 
@@ -42,7 +42,7 @@ def TIFF_block(no_of_channels,
 
     return TIFF
 
-def PLANE_block(no_of_channels,inputs):
+def PLANE_array(no_of_channels,inputs):
 
     PLANE=[
         Plane(
@@ -61,7 +61,7 @@ def PLANE_block(no_of_channels,inputs):
 
     return PLANE
     
-def CHANN_block(no_of_channels,inputs):
+def CHANN_array(no_of_channels,inputs):
 
     CHANN=[
         Channel(
@@ -78,7 +78,7 @@ def CHANN_block(no_of_channels,inputs):
 
     return CHANN
 
-def PIXELS_block(chann_block,plane_block,tiff_block,inputs):
+def PIXELS_array(chann_block,plane_block,tiff_block,inputs):
 
     PIXELS=[
         Pixels(
@@ -106,21 +106,18 @@ def PIXELS_block(chann_block,plane_block,tiff_block,inputs):
 
     return PIXELS
 
-def IMAGE_block(no_of_tiles,
-                inputs={'pix_block':[]}
-                ):
+def IMAGE_array(pixels_block,imageID):
     
     IMAGE=[
         Image(
-            id=ome_types.model.simple_types.ImageID('Image:{x}'.format(x=t)),
-            pixels=inputs['pix_block'][t]
+            id=ome_types.model.simple_types.ImageID('Image:{x}'.format(x=imageID)),
+            pixels=pixels_block
             )
-            for t in range(0,no_of_tiles)
-            ]
+        ]
 
     return IMAGE
 
-def OME_xml(inputs={'img_block':[]}):
+def OME_xml(image_block):
 
     ome=OME()
     ome.creator=" ".join([ome_types.__name__,
@@ -129,7 +126,7 @@ def OME_xml(inputs={'img_block':[]}):
                         platform.python_version()
                         ]
                         )
-    ome.images=inputs['img_block']
+    ome.images=image_block
     ome.uuid=uuid4().urn
     ome_xml=to_xml(ome)
 

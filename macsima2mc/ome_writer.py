@@ -12,35 +12,23 @@ group.to_csv("D:/test_folder/tile_info.csv")
 def create_ome(tile_info,conformed_markers):
     grouped_tiles=tile_info.groupby(['tile'])
     no_of_channels=len(conformed_markers)
-
+    tiles_counter=0
+    image=[]
     for tileID,frame in grouped_tiles:
-        for marker,filter in conformed_markers:
-                metadata=frame.loc[ (frame['marker']==marker) & (frame['filter']==filter) ]
-                metadata.position_x.values[0]
-                
+        metadata=schema.INPUTS(frame, conformed_markers)
+        tiff=schema.TIFF_array( no_of_channels, inputs={'offset':no_of_channels*tiles_counter} )
+        plane=schema.PLANE_array(no_of_channels, metadata)
+        channel=schema.CHANN_array(no_of_channels,metadata)
+        image.append( schema.IMAGE_array ( 
+            schema.PIXELS_array(channel,plane,tiff,metadata),
+             tiles_counter 
+             ) 
+             )
+        tiles_counter=+1
 
-        tiff=schema.TIFF_block(no_of_channels,
-            inputs={'offset':n*no_of_channels}
-            )
-        plane=schema.PLANE_block(no_of_channels,
-            inputs={'position_x':0,'position_x_unit':'','position_y':0,'position_y_unit':'','exposure_time':[]}
-            )
-        ch=schema.CHANN_block()
-        
+    ome_xml=schema.OME_xml(image)
 
-        a=[schema.IMAGE_block(
+    return ome_xml
 
-            schema.PIXELS_block( inputs={'tile_id':0,'size_x':0,'size_y':0,'type':'',
-                        'chann_block':[],'pix_size_x':0,'pix_size_y':0,
-                        'pix_size_x_units':'','pix_size_y_units':'',
-                        'plane_block':[],'sig_bits':0,'tiff_block':[]
-                        }
-
-            }
-
-            )
-
-
-        )]
-
+    
 
