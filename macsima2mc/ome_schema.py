@@ -1,17 +1,8 @@
 #!/usr/bin/python
 import ome_types
-import pandas as pd
-import tifffile as tifff
-from bs4 import BeautifulSoup
 from uuid import uuid4
-import copy
-from ome_types import from_tiff,to_xml
-from ome_types.model import OME,Image,Instrument,Pixels,TiffData,Channel,Plane
-import ome_types.model
+from ome_types.model import OME,Image,Pixels,TiffData,Channel,Plane
 import platform
-from helpers import merge_dicts
-
-
 
 def INPUTS(frame,conformed_markers):
     features=frame.columns.values
@@ -65,8 +56,10 @@ def CHANN_array(no_of_channels,inputs):
 
     CHANN=[
         Channel(
-            id=ome_types.model.simple_types.ChannelID('Channel:{y}:{x}:{marker_name}'.format(x=ch,y=100+inputs['tile'][ch],marker_name=inputs['marker'][ch] )),
-            color=ome_types.model.simple_types.Color((255,255,255)),
+            #id=ome_types.model.simple_types.ChannelID('Channel:{y}:{x}:{marker_name}'.format(x=ch,y=100+inputs['tile'][ch],marker_name=inputs['marker'][ch] )),
+            id='Channel:{y}:{x}:{marker_name}'.format(x=ch,y=100+int( inputs['tile'][ch] ) ,marker_name=inputs['marker'][ch] ),
+            #color=ome_types.model.simple_types.Color((255,255,255)),
+            color=(255,255,255),
             emission_wavelength=inputs['emission_wavelenght'][ch],
             emission_wavelength_unit=inputs['emission_wavelenght_unit'][ch],
             excitation_wavelength=inputs['excitation_wavelenght'][ch],
@@ -79,11 +72,12 @@ def CHANN_array(no_of_channels,inputs):
     return CHANN
 
 def PIXELS_array(chann_block,plane_block,tiff_block,inputs):
-
-    PIXELS=[
-        Pixels(
-            id=ome_types.model.simple_types.PixelsID('Pixels:{x}'.format(x=inputs['tile'][0])),
-            dimension_order=ome_types.model.pixels.DimensionOrder('XYCZT'),
+    #inputs['type'][0],#bit_depth
+    PIXELS=Pixels(
+            #id=ome_types.model.simple_types.PixelsID('Pixels:{x}'.format(x=inputs['tile'][0])),
+            id='Pixels:{x}'.format(x=inputs['tile'][0]),
+            #dimension_order=ome_types.model.pixels.DimensionOrder('XYCZT'),
+            dimension_order='XYCZT',
             size_c=len(chann_block),
             size_t=1,
             size_x=inputs['size_x'][0],
@@ -102,22 +96,20 @@ def PIXELS_array(chann_block,plane_block,tiff_block,inputs):
             significant_bits=inputs['significant_bits'][0],
             tiff_data_blocks=tiff_block
             )
-        ]
 
     return PIXELS
 
 def IMAGE_array(pixels_block,imageID):
     
-    IMAGE=[
-        Image(
-            id=ome_types.model.simple_types.ImageID('Image:{x}'.format(x=imageID)),
+    IMAGE=Image(
+            #id=ome_types.model.simple_types.ImageID('Image:{x}'.format(x=imageID)),
+            id='Image:{x}'.format(x=imageID),
             pixels=pixels_block
             )
-        ]
 
     return IMAGE
 
-def OME_xml(image_block):
+def OME_metadata(image_block):
 
     ome=OME()
     ome.creator=" ".join([ome_types.__name__,
@@ -128,10 +120,9 @@ def OME_xml(image_block):
                         )
     ome.images=image_block
     ome.uuid=uuid4().urn
-    ome_xml=to_xml(ome)
+    ome_xml=ome_types.to_xml(ome)
 
-    return ome_xml
-    
+    return ome,ome_xml
 
 
 
