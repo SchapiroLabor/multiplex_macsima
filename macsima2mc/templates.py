@@ -74,3 +74,5 @@ def macsima_pattern(version=1):
             "version argument should be 1 or 2"
         )
     return pattern
+
+

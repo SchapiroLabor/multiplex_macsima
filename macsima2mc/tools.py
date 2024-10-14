@@ -183,18 +183,22 @@ def select_by_exposure(list_indices,exp_index=4,target='max'):
 
     return selected_indices
 
-def create_stack(cycle_info_df,output_dir,ref_marker='DAPI',hi_exp=False,outputs=False,):
-    if outputs:
+def create_stack(cycle_info_df,output_dir,ref_marker='DAPI',hi_exp=False,extended_outputs=False):
+
+    if extended_outputs:
         out=outputs_dic()
+    else:
+        out={'output_paths':[]}
 
     acq_group=cycle_info_df.groupby(['source','rack','well','roi','exposure_level'])
-    acq_index=list(acq_group.indices.keys())
+    acq_index=list( acq_group.indices.keys() )
 
     if hi_exp:
         acq_index=select_by_exposure(acq_index)
 
     for index in acq_index:
-        (output_dir / cast_outdir_name(index) ).mkdir(parents=True, exist_ok=True)
+        stack_output_dir=output_dir / cast_outdir_name(index) / 'raw'
+        ( stack_output_dir ).mkdir(parents=True, exist_ok=True)
         group=acq_group.get_group(index)
         #use tile 1 as reference to determine the heigh and width of the tiles
         tile_no=group.tile.values
@@ -207,8 +211,9 @@ def create_stack(cycle_info_df,output_dir,ref_marker='DAPI',hi_exp=False,outputs
             index_aux=tuple(index_aux)
             aux_group=acq_group.get_group(index_aux)
             aux_group=aux_group.loc[aux_group['marker']==ref_marker]
-            group=pd.concat([group,aux_group])
+            group=pd.concat( [group,aux_group] )
 
+        #group.to_csv(stack_output_dir.parent.absolute() /'info.csv' )
         groups_of_tiles=group.groupby(['tile'])
         conformed_markers =conform_markers(marker_filter_map,ref_marker)
         stack=init_stack(tile_no[0],groups_of_tiles,conformed_markers)
@@ -220,18 +225,20 @@ def create_stack(cycle_info_df,output_dir,ref_marker='DAPI',hi_exp=False,outputs
                 stack[counter,:,:]=tifff.imread(Path(target_path))
                 counter+=1
         stack_name =cast_stack_name(frame.cycle.iloc[0],index,conformed_markers)
-        stack_full_path=output_dir / cast_outdir_name(index)  /stack_name
+        stack_file_path= stack_output_dir/ stack_name
 
-        if outputs:
+        if extended_outputs:
             out['index'].append(index)
             out['array'].append(stack)
             out['full_path'].append(stack_full_path)
             out['ome'].append(ome)
         else:
-            tifff.imwrite( stack_full_path ,stack, photometric='minisblack' )
+            out['output_paths'].append( stack_output_dir )
+            tifff.imwrite( stack_file_path , stack, photometric='minisblack' )
             ome,ome_xml=ome_writer.create_ome(group,conformed_markers)
-            tifff.tiffcomment(stack_full_path,ome_xml)
+            tifff.tiffcomment(stack_file_path, ome_xml)
         
-    if outputs:
-            return out
-            
+    if extended_outputs:
+        return out
+    else:
+        return np.unique( out['output_paths'] )
