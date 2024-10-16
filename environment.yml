@@ -1,0 +1,11 @@
+name: staging_env
+channels:
+  - defaults
+dependencies:
+  - python=3.12
+  - conda-forge::ome-types=0.5.2
+  - numpy
+  - conda-forge::tifffile
+  - pandas
+  - conda-forge::beautifulsoup4
+prefix: C:\Users\VictorP\anaconda3\envs\staging_env
