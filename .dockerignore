@@ -1,7 +1,5 @@
 .git
-pip_macs
-test_data
 .gitignore
+old
 LICENSE
-requirements.txt
 Dockerfile

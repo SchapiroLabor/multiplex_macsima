@@ -1,6 +1,5 @@
-pip_macs
-test_data
-test_scripts
+old
+.gitignore
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
