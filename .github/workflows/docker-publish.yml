@@ -5,7 +5,13 @@ name: Docker
 # separate terms of service, privacy policy, and support
 # documentation.
 
-on: [push]
+on: #[push]
+    release: 
+        types:published
+    pull_request:
+        branches: ["main"]
+    
+        
 #  schedule:
 #    - cron: '1 * * * *'
 #  push:
