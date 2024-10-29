@@ -22,7 +22,7 @@ def create_ome(tile_info,conformed_markers):
         channel=schema.CHANN_array(no_of_channels,metadata)
         pixels=schema.PIXELS_array(channel,plane,tiff,metadata)
         image.append( schema.IMAGE_array (pixels ,tiles_counter) )
-        tiles_counter=+1
+        tiles_counter+=1
 
     ome,ome_xml=schema.OME_metadata(image)
 
