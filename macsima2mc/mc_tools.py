@@ -40,7 +40,7 @@ def get_patterns():
 
 	return patterns
 
-input=Path('D:/test_folder/rack-01-well-B01-roi-001-exp-1/raw')
+#input=Path('D:/test_folder/rack-01-well-B01-roi-001-exp-1/raw')
 #img_names=[ file.stem for file in  list( input.glob('*.tif*') ) ]
 
 #file[  ]=flatten_list( [ m.split('__') for m in extract_values( tup[0] , file_names,number_cast=tup[1] )] )
