@@ -47,7 +47,7 @@ def get_patterns():
 #file[key]=flatten_list( [ m.split('__') for m in extract_values( tup[0] , file_names,number_cast=tup[1] )] )
 
 def write_markers_file( data_path, ref_marker='DAPI'):
-	img_paths=list( data_path.glob('*.tif*') ) 
+	img_paths=list( sorted( data_path.glob('*.tif*') ) )
 	mks_file=markers_file()
 	patt=get_patterns()
 
