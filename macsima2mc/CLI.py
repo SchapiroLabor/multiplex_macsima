@@ -29,6 +29,12 @@ def get_args():
                     help='string specifying the name of the reference marker'
                     )
 
+    parser.add_argument('-ic',
+                    '--illumination_correction',
+                    action='store_true',
+                    help='Applies illumination correction to all tiles, the illumination profiles are created with basicpy'
+                    )
+
 
     parser.add_argument('-he',
                     '--hi_exposure_only',

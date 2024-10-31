@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import numpy as np
 from pathlib import Path
 import ome_writer
+import illumination_corr
 
 
 def merge_dicts(list_of_dicts):
@@ -183,7 +184,7 @@ def select_by_exposure(list_indices,exp_index=4,target='max'):
 
     return selected_indices
 
-def create_stack(cycle_info_df,output_dir,ref_marker='DAPI',hi_exp=False,extended_outputs=False):
+def create_stack(cycle_info_df,output_dir,ref_marker='DAPI',hi_exp=False,ill_corr=False,extended_outputs=False):
 
     if extended_outputs:
         out=outputs_dic()
@@ -225,7 +226,15 @@ def create_stack(cycle_info_df,output_dir,ref_marker='DAPI',hi_exp=False,extende
                 stack[counter,:,:]=tifff.imread(Path(target_path))
                 counter+=1
         stack_name =cast_stack_name(frame.cycle.iloc[0],index,conformed_markers)
-        stack_file_path= stack_output_dir/ stack_name
+
+        if ill_corr:
+            tag='corr_'
+            no_of_channels=len(conformed_markers)
+            stack=illumination_corr.apply_corr(stack,no_of_channels)
+        else:
+            tag=''
+
+        stack_file_path= stack_output_dir/ '{prefix}{base}'.format(prefix=tag,base=stack_name)
 
         if extended_outputs:
             out['index'].append(index)
