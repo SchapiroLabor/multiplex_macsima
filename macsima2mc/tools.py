@@ -184,7 +184,7 @@ def select_by_exposure(list_indices,exp_index=4,target='max'):
 
     return selected_indices
 
-def create_stack(cycle_info_df,output_dir,ref_marker='DAPI',hi_exp=False,ill_corr=False,extended_outputs=False):
+def create_stack(cycle_info_df,output_dir,ref_marker='DAPI',hi_exp=False,ill_corr=False,out_folder='raw',extended_outputs=False):
 
     if extended_outputs:
         out=outputs_dic()
@@ -198,7 +198,7 @@ def create_stack(cycle_info_df,output_dir,ref_marker='DAPI',hi_exp=False,ill_cor
         acq_index=select_by_exposure(acq_index)
 
     for index in acq_index:
-        stack_output_dir=output_dir / cast_outdir_name(index) / 'staged'
+        stack_output_dir=output_dir / cast_outdir_name(index) / out_folder
         ( stack_output_dir ).mkdir(parents=True, exist_ok=True)
         group=acq_group.get_group(index)
         #use tile 1 as reference to determine the heigh and width of the tiles

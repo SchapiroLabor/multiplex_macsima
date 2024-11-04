@@ -29,6 +29,12 @@ def get_args():
                     help='string specifying the name of the reference marker'
                     )
 
+    parser.add_argument('-od',
+                    '--output_dir',
+                    default='raw',
+                    help='string specifying the name of the reference marker'
+                    )
+
     parser.add_argument('-ic',
                     '--illumination_correction',
                     action='store_true',
