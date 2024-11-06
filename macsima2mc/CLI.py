@@ -1,14 +1,16 @@
 import argparse
 import pathlib
 
-
-
 #---CLI-BLOCK---#
-def get_args():     
+def get_args():
+    """
+    This function parses the command line arguments and returns them as a namespace object.
+
+    returns: namespace object with the arguments.
+    """
     parser=argparse.ArgumentParser()
 
     #Mandatory arguments
-
     parser.add_argument('-i',
                     '--input',
                     required=True,
