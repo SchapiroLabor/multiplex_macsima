@@ -34,7 +34,7 @@ def get_args():
     parser.add_argument('-od',
                     '--output_dir',
                     default='raw',
-                    help='string specifying the name of the reference marker'
+                    help='string specifying the name of the subfolder in which the staged images will be saved'
                     )
 
     parser.add_argument('-ic',
