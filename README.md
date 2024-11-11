@@ -6,18 +6,18 @@ The script takes as main input the path to the cycle folder that cointains the r
  
 ## CLI
 ### Required arguments
-| Argument|Type|Description|Default value|
-|---------|----|-----------|-------------|
-| -i | string/path | Absolute path to the the parent folder of the raw tiles, i.e. the cycle folder whose name follows the pattern X_Cycle_N,where N represents the cycle number | NA |
-| -o | string/path | Absolute path to the directory in which the outputs will be saved. If the output directory doesn't exist it will be created. | NA | 
+| Argument|Long name|Type|Description|Default value|
+|---------|---------|----|-----------|-------------|
+| -i | string/path | --input | Absolute path to the the parent folder of the raw tiles, i.e. the cycle folder whose name follows the pattern X_Cycle_N,where N represents the cycle number | NA |
+| -o | string/path | --output | Absolute path to the directory in which the outputs will be saved. If the output directory doesn't exist it will be created. | NA | 
 
 ### Optional arguments
-| Argument| Type| Description | Default value |
-|----|----|----|---|
-|-rm|string|Name of the reference marker for registration|'DAPI'|
-|-od|string|String specifying the name of the subfolder in which the staged images will be saved.|'raw'|
-|-ic|boolean flag |Give this flag to apply illumination correction to all tiles, the illumination profiles are calculated with basicpy | FALSE |
-|-he|boolean flag|Give this flag to extract only the set of images with the highest exposure time|FALSE|
+| Argument|Type|Long name| Description | Default value |
+|---------|----|---------|-------------|---------------|
+|-rm|string | --reference_marker | Name of the reference marker for registration|'DAPI'|
+|-od|string | --output_dir | String specifying the name of the subfolder in which the staged images will be saved.|'raw'|
+|-ic|boolean flag | --illumination_correction |Give this flag to apply illumination correction to all tiles, the illumination profiles are calculated with basicpy | FALSE |
+|-he|boolean flag | --hi_exposure_only |Give this flag to extract only the set of images with the highest exposure time|FALSE|
 
 ## Container usage
 ### download container:
@@ -30,3 +30,15 @@ docker pull ghcr.io/schapirolabor/multiplex_macsima:v1.1.0
 ```
 singularity pull docker://ghcr.io/schapirolabor/multiplex_macsima:v1.1.0
 ```
+### Script execution
+
+- Docker
+```
+docker 
+```
+
+- Singularity
+```
+singularity exec --bind **/path_to_your_local_cycle_folder**:/mnt,**/path_to_your_local_output_folder**:/media --no-home **path_to_container** python staging/macsima2mc/macsima2mc.py -i /mnt/$cycle_folder -o /media/$sample_id -ic
+```
+
