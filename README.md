@@ -9,7 +9,6 @@ The script takes as main input the path to the cycle folder that cointains the r
 | Argument|Type|Description|Default value|
 |---------|----|-----------|-------------|
 | -i | string/path | Absolute path to the the parent folder of the raw tiles, i.e. the cycle folder whose name follows the pattern X_Cycle_N,where N represents the cycle number | NA |
-
 | -o | string/path | Absolute path to the directory in which the outputs will be saved. If the output directory doesn't exist it will be created. | NA | 
 
 ### Optional arguments
