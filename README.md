@@ -37,8 +37,7 @@ docker
 ```
 
 - Singularity
-```
-singularity exec --bind $path_to_your_local_cycle_folder:/mnt,$path_to_your_local_output_folder:/media --no-home **path_to_container** python staging/macsima2mc/macsima2mc.py -i /mnt/$cycle_folder -o /media/$sample_id -ic
-<span style="color:blue">some *blue* text</span>.
+``` bash
+singularity exec --bind $path_to_your_local_cycle_folder:/mnt,$path_to_your_local_output_folder:/media --no-home $path_to_container python staging/macsima2mc/macsima2mc.py -i /mnt/$path_to_your_local_cycle_folder -o /media/$path_to_your_local_output_folder
 ```
 
