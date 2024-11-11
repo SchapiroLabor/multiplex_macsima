@@ -24,7 +24,6 @@ The script takes as main input the path to the cycle folder that cointains the r
 - Docker
 ```
 docker pull ghcr.io/schapirolabor/multiplex_macsima:v1.1.0
-
 ```
 - Singularity
 ```
@@ -39,6 +38,7 @@ docker
 
 - Singularity
 ```
-singularity exec --bind **/path_to_your_local_cycle_folder**:/mnt,**/path_to_your_local_output_folder**:/media --no-home **path_to_container** python staging/macsima2mc/macsima2mc.py -i /mnt/$cycle_folder -o /media/$sample_id -ic
+singularity exec --bind $path_to_your_local_cycle_folder:/mnt,$path_to_your_local_output_folder:/media --no-home **path_to_container** python staging/macsima2mc/macsima2mc.py -i /mnt/$cycle_folder -o /media/$sample_id -ic
+<span style="color:blue">some *blue* text</span>.
 ```
 
